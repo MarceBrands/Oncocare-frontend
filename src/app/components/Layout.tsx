@@ -21,7 +21,7 @@ const navigation = [
   { name: 'Exames', href: '/exames', icon: FileText },
   { name: 'Avaliacoes', href: '/sintomas', icon: ClipboardList },
   { name: 'Indicadores', href: '/bioimpedancia', icon: BarChart3 },
-  { name: 'Configuracoes', href: '#', icon: Settings },
+  { name: 'Configuracoes', href: '/configuracoes', icon: Settings },
 ];
 
 export function Layout() {
@@ -30,6 +30,7 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Mobile sidebar */}
       <div
         className={cn(
           'fixed inset-0 z-50 bg-slate-950/50 transition-opacity lg:hidden',
@@ -48,10 +49,12 @@ export function Layout() {
         </div>
       </div>
 
+      {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
         <SidebarContent location={location} />
       </div>
 
+      {/* Main content */}
       <div className="lg:pl-72">
         <div className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/95 px-4 shadow-sm lg:px-8">
           <button
