@@ -8,9 +8,24 @@ import {
   AlertTriangle,
   CheckCircle,
   FileText,
+  Pencil,
+  Save,
 } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -46,7 +61,16 @@ interface ExamResult {
   trend?: 'up' | 'down' | 'stable';
 }
 
-const examsData: Record<string, ExamResult[]> = {
+type BioimpedanciaForm = {
+  peso: string;
+  altura: string;
+  massaMagra: string;
+  massaGorda: string;
+  aguaCorporal: string;
+  anguloFase: string;
+};
+
+const initialExamsData: Record<string, ExamResult[]> = {
   hemograma: [
     {
       name: 'Hemoglobina',
@@ -57,7 +81,7 @@ const examsData: Record<string, ExamResult[]> = {
       trend: 'down',
     },
     {
-      name: 'Hematócrito',
+      name: 'Hematocrito',
       value: 28.5,
       unit: '%',
       reference: '36.0 - 46.0',
@@ -65,25 +89,25 @@ const examsData: Record<string, ExamResult[]> = {
       trend: 'down',
     },
     {
-      name: 'Leucócitos',
+      name: 'Leucocitos',
       value: 4200,
-      unit: '/µL',
+      unit: '/uL',
       reference: '4500 - 11000',
       status: 'low',
       trend: 'down',
     },
     {
-      name: 'Neutrófilos',
+      name: 'Neutrofilos',
       value: 1800,
-      unit: '/µL',
+      unit: '/uL',
       reference: '2000 - 7500',
       status: 'low',
       trend: 'down',
     },
     {
-      name: 'Linfócitos',
+      name: 'Linfocitos',
       value: 1900,
-      unit: '/µL',
+      unit: '/uL',
       reference: '1000 - 4000',
       status: 'normal',
       trend: 'stable',
@@ -91,7 +115,7 @@ const examsData: Record<string, ExamResult[]> = {
     {
       name: 'Plaquetas',
       value: 180000,
-      unit: '/µL',
+      unit: '/uL',
       reference: '150000 - 400000',
       status: 'normal',
       trend: 'down',
@@ -167,7 +191,7 @@ const examsData: Record<string, ExamResult[]> = {
   ],
   eletrolitos: [
     {
-      name: 'Sódio',
+      name: 'Sodio',
       value: 138,
       unit: 'mEq/L',
       reference: '136 - 145',
@@ -175,7 +199,7 @@ const examsData: Record<string, ExamResult[]> = {
       trend: 'stable',
     },
     {
-      name: 'Potássio',
+      name: 'Potassio',
       value: 4.2,
       unit: 'mEq/L',
       reference: '3.5 - 5.0',
@@ -183,7 +207,7 @@ const examsData: Record<string, ExamResult[]> = {
       trend: 'stable',
     },
     {
-      name: 'Cálcio',
+      name: 'Calcio',
       value: 9.1,
       unit: 'mg/dL',
       reference: '8.5 - 10.5',
@@ -191,7 +215,7 @@ const examsData: Record<string, ExamResult[]> = {
       trend: 'stable',
     },
     {
-      name: 'Magnésio',
+      name: 'Magnesio',
       value: 1.7,
       unit: 'mg/dL',
       reference: '1.7 - 2.2',
@@ -213,11 +237,20 @@ const examsData: Record<string, ExamResult[]> = {
 
 const categories = [
   { id: 'hemograma', name: 'Hemograma', icon: Activity },
-  { id: 'funcaoRenal', name: 'Função Renal', icon: FileText },
-  { id: 'funcaoHepatica', name: 'Função Hepática', icon: FileText },
-  { id: 'eletrolitos', name: 'Eletrólitos', icon: Activity },
-  { id: 'inflamacao', name: 'Inflamação', icon: AlertTriangle },
+  { id: 'funcaoRenal', name: 'Funcao Renal', icon: FileText },
+  { id: 'funcaoHepatica', name: 'Funcao Hepatica', icon: FileText },
+  { id: 'eletrolitos', name: 'Eletrolitos', icon: Activity },
+  { id: 'inflamacao', name: 'Inflamacao', icon: AlertTriangle },
 ];
+
+const initialBioimpedancia: BioimpedanciaForm = {
+  peso: '68,5',
+  altura: '1,61',
+  massaMagra: '42,5',
+  massaGorda: '32,8',
+  aguaCorporal: '51,2',
+  anguloFase: '5,1',
+};
 
 const hemoglobinaHistory = [
   { month: 'Jan', value: 12.5, min: 12, max: 16 },
@@ -278,23 +311,79 @@ const getStatusText = (status: string) => {
     case 'high':
       return 'Alto';
     case 'critical':
-      return 'Crítico';
+      return 'Critico';
     default:
       return status;
   }
 };
 
+function toNumber(value: string) {
+  return Number(value.replace(',', '.'));
+}
+
+function formatDecimal(value: number) {
+  if (!Number.isFinite(value)) {
+    return '-';
+  }
+
+  return value.toFixed(1).replace('.', ',');
+}
+
+function calculateImc(peso: string, altura: string) {
+  const pesoNumber = toNumber(peso);
+  const alturaNumber = toNumber(altura);
+
+  if (!pesoNumber || !alturaNumber) {
+    return '-';
+  }
+
+  return formatDecimal(pesoNumber / (alturaNumber * alturaNumber));
+}
+
+function getBioimpedanciaData(bio: BioimpedanciaForm) {
+  return [
+    { key: 'peso', label: 'Peso', value: bio.peso || '-', unit: 'kg', reference: 'Acompanhar evolucao' },
+    { key: 'altura', label: 'Altura', value: bio.altura || '-', unit: 'm', reference: 'Usada para calculo do IMC' },
+    { key: 'imc', label: 'IMC', value: calculateImc(bio.peso, bio.altura), unit: 'kg/m2', reference: '18,5 - 24,9' },
+    { key: 'massaMagra', label: 'Massa magra', value: bio.massaMagra || '-', unit: 'kg', reference: 'Comparar por consulta' },
+    { key: 'massaGorda', label: 'Massa gorda', value: bio.massaGorda || '-', unit: '%', reference: 'Acompanhar reducao ou ganho' },
+    { key: 'aguaCorporal', label: 'Agua corporal', value: bio.aguaCorporal || '-', unit: '%', reference: '45 - 60' },
+    { key: 'anguloFase', label: 'Angulo de fase', value: bio.anguloFase || '-', unit: 'graus', reference: 'Observar tendencia' },
+  ];
+}
+
 export function Exames() {
   const [selectedCategory, setSelectedCategory] = useState('hemograma');
   const [selectedPatient, setSelectedPatient] = useState('maria');
+  const [examsData, setExamsData] = useState(initialExamsData);
+  const [bioimpedancia, setBioimpedancia] = useState(initialBioimpedancia);
 
   const currentExams = examsData[selectedCategory] || [];
+  const currentCategoryName = categories.find((c) => c.id === selectedCategory)?.name;
+  const bioimpedanciaData = getBioimpedanciaData(bioimpedancia);
   const criticalCount = Object.values(examsData)
     .flat()
     .filter((e) => e.status === 'critical').length;
   const attentionCount = Object.values(examsData)
     .flat()
     .filter((e) => e.status === 'low' || e.status === 'high').length;
+
+  function updateBioField(field: keyof BioimpedanciaForm, value: string) {
+    setBioimpedancia((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateExamValue(examName: string, value: string) {
+    const nextValue = Number(value);
+
+    setExamsData((current) => ({
+      ...current,
+      [selectedCategory]: current[selectedCategory].map((exam) =>
+        exam.name === examName
+          ? { ...exam, value: Number.isNaN(nextValue) ? 0 : nextValue }
+          : exam
+      ),
+    }));
+  }
 
   return (
     <>
@@ -305,7 +394,6 @@ export function Exames() {
         </p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
         <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
           <div className="flex items-center gap-4">
@@ -313,7 +401,7 @@ export function Exames() {
               <AlertTriangle className="size-6 text-white" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Valores Críticos</p>
+              <p className="text-sm text-gray-500">Valores Criticos</p>
               <p className="text-2xl font-bold text-gray-900">{criticalCount}</p>
             </div>
           </div>
@@ -325,7 +413,7 @@ export function Exames() {
               <AlertTriangle className="size-6 text-white" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Requer Atenção</p>
+              <p className="text-sm text-gray-500">Requer Atencao</p>
               <p className="text-2xl font-bold text-gray-900">{attentionCount}</p>
             </div>
           </div>
@@ -347,7 +435,6 @@ export function Exames() {
         </Card>
       </div>
 
-      {/* Patient Selector */}
       <Card className="p-4 bg-white border-0 shadow-lg rounded-2xl mb-6">
         <div className="flex items-center gap-4">
           <p className="text-sm font-medium text-gray-700">Paciente:</p>
@@ -362,14 +449,81 @@ export function Exames() {
             </SelectContent>
           </Select>
           <Badge variant="outline" className="ml-auto">
-            Última coleta: 28/05/2026
+            Ultima coleta: 28/05/2026
           </Badge>
         </div>
       </Card>
 
-      {/* Main Content */}
+      <Card className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-950">Bioimpedancia</h2>
+            <p className="text-sm text-slate-600">
+              Dados corporais para acompanhar nutricao, massa muscular e evolucao durante o tratamento.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="w-fit border-cyan-200 bg-cyan-50 text-cyan-800">
+              Ultima avaliacao: 28/05/2026
+            </Badge>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-lg">
+                  <Pencil className="size-4" />
+                  Incluir/alterar
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Incluir ou alterar bioimpedancia</DialogTitle>
+                  <DialogDescription>
+                    Preencha os dados medidos. O IMC e calculado automaticamente por peso e altura.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <BioField label="Peso" unit="kg" value={bioimpedancia.peso} onChange={(value) => updateBioField('peso', value)} />
+                  <BioField label="Altura" unit="m" value={bioimpedancia.altura} onChange={(value) => updateBioField('altura', value)} />
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs text-slate-500">IMC calculado</p>
+                    <p className="mt-1 text-xl font-bold text-slate-950">
+                      {calculateImc(bioimpedancia.peso, bioimpedancia.altura)} kg/m2
+                    </p>
+                  </div>
+                  <BioField label="Massa magra" unit="kg" value={bioimpedancia.massaMagra} onChange={(value) => updateBioField('massaMagra', value)} />
+                  <BioField label="Massa gorda" unit="%" value={bioimpedancia.massaGorda} onChange={(value) => updateBioField('massaGorda', value)} />
+                  <BioField label="Agua corporal" unit="%" value={bioimpedancia.aguaCorporal} onChange={(value) => updateBioField('aguaCorporal', value)} />
+                  <BioField label="Angulo de fase" unit="graus" value={bioimpedancia.anguloFase} onChange={(value) => updateBioField('anguloFase', value)} />
+                </div>
+
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button className="rounded-lg bg-cyan-700 hover:bg-cyan-800">
+                      <Save className="size-4" />
+                      Aplicar dados
+                    </Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {bioimpedanciaData.map((item) => (
+            <div key={item.label} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-medium uppercase text-slate-500">{item.label}</p>
+              <p className="mt-2 text-2xl font-bold text-slate-950">
+                {item.value}
+                <span className="ml-1 text-sm font-medium text-slate-500">{item.unit}</span>
+              </p>
+              <p className="mt-2 text-xs text-slate-500">Referencia: {item.reference}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Categories Sidebar */}
         <div className="lg:col-span-1">
           <Card className="p-4 bg-white border-0 shadow-lg rounded-2xl">
             <p className="text-sm font-semibold text-gray-900 mb-3">Categorias</p>
@@ -410,21 +564,69 @@ export function Exames() {
           </Card>
         </div>
 
-        {/* Results Table */}
         <div className="lg:col-span-3 space-y-6">
           <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {categories.find((c) => c.id === selectedCategory)?.name}
-            </h3>
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {currentCategoryName}
+              </h3>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="rounded-lg">
+                    <Pencil className="size-4" />
+                    Incluir/alterar exames
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>Incluir ou alterar {currentCategoryName}</DialogTitle>
+                    <DialogDescription>
+                      Atualize os valores laboratoriais da categoria selecionada.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="max-h-[60vh] overflow-auto pr-2">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      {currentExams.map((exam) => (
+                        <div key={exam.name}>
+                          <Label>{exam.name}</Label>
+                          <div className="mt-2 flex rounded-lg border border-slate-200 bg-white">
+                            <Input
+                              type="number"
+                              value={exam.value}
+                              onChange={(event) => updateExamValue(exam.name, event.target.value)}
+                              className="rounded-r-none border-0"
+                            />
+                            <span className="flex min-w-20 items-center justify-center border-l border-slate-200 px-3 text-sm text-slate-500">
+                              {exam.unit}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">Referencia: {exam.reference}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button className="rounded-lg bg-cyan-700 hover:bg-cyan-800">
+                        <Save className="size-4" />
+                        Aplicar exames
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Exame</TableHead>
                     <TableHead className="text-center">Valor</TableHead>
-                    <TableHead className="text-center">Referência</TableHead>
+                    <TableHead className="text-center">Referencia</TableHead>
                     <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-center">Tendência</TableHead>
+                    <TableHead className="text-center">Tendencia</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -459,12 +661,11 @@ export function Exames() {
             </div>
           </Card>
 
-          {/* Evolution Chart - Show only for Hemograma */}
           {selectedCategory === 'hemograma' && (
             <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <TrendingDown className="size-5 text-red-600" />
-                Evolução da Hemoglobina
+                Evolucao da Hemoglobina
               </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={hemoglobinaHistory}>
@@ -483,13 +684,13 @@ export function Exames() {
                     y={12}
                     stroke="#10b981"
                     strokeDasharray="3 3"
-                    label={{ value: 'Mín: 12', fill: '#10b981', fontSize: 12 }}
+                    label={{ value: 'Min: 12', fill: '#10b981', fontSize: 12 }}
                   />
                   <ReferenceLine
                     y={16}
                     stroke="#10b981"
                     strokeDasharray="3 3"
-                    label={{ value: 'Máx: 16', fill: '#10b981', fontSize: 12 }}
+                    label={{ value: 'Max: 16', fill: '#10b981', fontSize: 12 }}
                   />
                   <Line
                     type="monotone"
@@ -505,12 +706,12 @@ export function Exames() {
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="size-5 text-red-600" />
                   <p className="font-semibold text-red-900">
-                    Alerta: Hemoglobina Crítica
+                    Alerta: Hemoglobina Critica
                   </p>
                 </div>
                 <p className="text-sm text-red-700">
-                  Valor atual 7.2 g/dL está 42% abaixo do limite mínimo aceitável.
-                  Recomenda-se avaliação urgente e possível transfusão sanguínea.
+                  Valor atual 7.2 g/dL esta 42% abaixo do limite minimo aceitavel.
+                  Recomenda-se avaliacao urgente e possivel transfusao sanguinea.
                 </p>
               </div>
             </Card>
@@ -520,5 +721,34 @@ export function Exames() {
 
       <Outlet />
     </>
+  );
+}
+
+function BioField({
+  label,
+  unit,
+  value,
+  onChange,
+}: {
+  label: string;
+  unit: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      <div className="mt-2 flex rounded-lg border border-slate-200 bg-white">
+        <Input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="rounded-r-none border-0"
+          placeholder="Informar valor"
+        />
+        <span className="flex min-w-20 items-center justify-center border-l border-slate-200 px-3 text-sm text-slate-500">
+          {unit}
+        </span>
+      </div>
+    </div>
   );
 }
