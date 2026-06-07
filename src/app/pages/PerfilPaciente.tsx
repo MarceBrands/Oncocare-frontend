@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate } from 'react-router';
 import {
   ArrowLeft,
   AlertTriangle,
-  TrendingUp,
-  TrendingDown,
   Calendar,
   Activity,
   FileText,
-  Heart,
+  HeartPulse,
   User,
   Clock,
+  MapPin,
+  ShieldCheck,
+  CheckCircle2,
 } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -19,8 +20,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -33,16 +32,18 @@ import {
 
 const patientData = {
   id: 1,
+  code: 'PAC-0001',
   name: 'Maria Santos Silva',
   age: 48,
   cpf: '123.456.789-00',
   diagnosis: ['Câncer de Mama'],
+  stage: 'Tratamento sistêmico em andamento',
   status: 'critical',
   riskScore: 8.5,
   professional: 'Dra. Ana Silva',
-  phone: '(11) 98765-4321',
-  email: 'maria.santos@email.com',
-  address: 'Rua das Flores, 123 - São Paulo, SP',
+  unit: 'UBS Vila Esperança',
+  referenceUnit: 'Ambulatório Regional de Oncologia',
+  nextAppointment: '05/06/2026',
 };
 
 const symptomsEvolution = [
@@ -54,11 +55,11 @@ const symptomsEvolution = [
 ];
 
 const labEvolution = [
-  { date: 'Jan', hemoglobina: 12.5, leucocitos: 7200, plaquetas: 280 },
-  { date: 'Fev', hemoglobina: 11.8, leucocitos: 6800, plaquetas: 260 },
-  { date: 'Mar', hemoglobina: 10.2, leucocitos: 5500, plaquetas: 220 },
-  { date: 'Abr', hemoglobina: 9.5, leucocitos: 4800, plaquetas: 200 },
-  { date: 'Mai', hemoglobina: 7.2, leucocitos: 4200, plaquetas: 180 },
+  { date: 'Jan', hemoglobina: 12.5 },
+  { date: 'Fev', hemoglobina: 11.8 },
+  { date: 'Mar', hemoglobina: 10.2 },
+  { date: 'Abr', hemoglobina: 9.5 },
+  { date: 'Mai', hemoglobina: 7.2 },
 ];
 
 const timeline = [
@@ -66,8 +67,8 @@ const timeline = [
     id: 1,
     date: '2026-05-30',
     type: 'alert',
-    title: 'Hemoglobina Crítica',
-    description: 'Hemoglobina em 7.2 g/dL - Necessário transfusão',
+    title: 'Exame laboratorial crítico',
+    description: 'Hemoglobina 7.2 g/dL. Caso sinalizado para avaliação da equipe responsável.',
     icon: AlertTriangle,
     color: 'red',
   },
@@ -75,8 +76,8 @@ const timeline = [
     id: 2,
     date: '2026-05-28',
     type: 'exam',
-    title: 'Exames Laboratoriais',
-    description: 'Coleta realizada - Aguardando resultados',
+    title: 'Coleta de exames',
+    description: 'Hemograma e função renal registrados na plataforma.',
     icon: FileText,
     color: 'blue',
   },
@@ -84,19 +85,19 @@ const timeline = [
     id: 3,
     date: '2026-05-25',
     type: 'treatment',
-    title: 'Sessão de Quimioterapia',
-    description: '8ª sessão realizada com sucesso',
+    title: 'Quimioterapia - 8ª sessão',
+    description: 'Sessão realizada. Sintomas reportados no acompanhamento pós-atendimento.',
     icon: Activity,
-    color: 'purple',
+    color: 'teal',
   },
   {
     id: 4,
     date: '2026-05-20',
     type: 'consultation',
-    title: 'Consulta Médica',
-    description: 'Avaliação de sintomas e ajuste de medicação',
-    icon: Heart,
-    color: 'pink',
+    title: 'Consulta especializada',
+    description: 'Avaliação clínica e atualização do plano de acompanhamento.',
+    icon: HeartPulse,
+    color: 'slate',
   },
 ];
 
@@ -123,308 +124,223 @@ const treatments = [
   },
 ];
 
-const alerts = [
-  {
-    id: 1,
-    type: 'critical',
-    message: 'Hemoglobina 7.2 g/dL - Risco de anemia grave',
-    recommendation: 'Considerar transfusão sanguínea urgente',
-  },
-  {
-    id: 2,
-    type: 'warning',
-    message: 'Leucócitos 4200/µL - Abaixo do ideal',
-    recommendation: 'Monitorar risco de infecções',
-  },
-  {
-    id: 3,
-    type: 'warning',
-    message: 'Score de fadiga aumentou 28% no último mês',
-    recommendation: 'Avaliar ajuste no tratamento',
-  },
+const careTasks = [
+  { label: 'Avaliar hemoglobina alterada', priority: 'Crítica', due: 'Hoje' },
+  { label: 'Confirmar retorno especializado', priority: 'Alta', due: '05/06' },
+  { label: 'Registrar contato da busca ativa', priority: 'Média', due: 'Esta semana' },
 ];
+
+const maskCpf = (cpf: string) => cpf.replace(/^(\d{3})\.\d{3}\.\d{3}-(\d{2})$/, '$1.***.***-$2');
 
 export function PerfilPaciente() {
   const navigate = useNavigate();
-  const { id } = useParams();
   const [activeTab, setActiveTab] = useState('visao-geral');
 
   return (
     <div className="max-w-7xl">
-      <div className="mb-8">
+      <div className="mb-6">
         <Button
           variant="ghost"
           onClick={() => navigate('/pacientes')}
-          className="mb-4 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+          className="mb-4 text-teal-700 hover:text-teal-800 hover:bg-teal-50"
         >
           <ArrowLeft className="size-5 mr-2" />
-          Voltar para Pacientes
+          Voltar para pacientes
         </Button>
       </div>
 
-      {/* Patient Header */}
-      <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl mb-6">
-        <div className="flex flex-col md:flex-row gap-6">
-          <div className="size-24 rounded-2xl bg-gradient-to-br from-pink-400 to-purple-600 flex items-center justify-center text-white font-bold text-2xl flex-shrink-0">
+      <Card className="p-6 bg-white border border-slate-200 shadow-sm rounded-lg mb-6">
+        <div className="flex flex-col gap-6 md:flex-row">
+          <div className="size-20 rounded-lg bg-red-700 flex items-center justify-center text-white font-bold text-2xl flex-shrink-0">
             MS
           </div>
           <div className="flex-1">
             <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {patientData.name}
-                </h1>
-                <p className="text-gray-500">
-                  {patientData.age} anos • CPF: {patientData.cpf}
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-bold text-slate-950">{patientData.name}</h1>
+                  <Badge variant="outline" className="border-slate-300 text-slate-700">
+                    {patientData.code}
+                  </Badge>
+                </div>
+                <p className="text-slate-500 mt-1">
+                  {patientData.age} anos • CPF protegido: {maskCpf(patientData.cpf)}
                 </p>
               </div>
-              <Badge variant="destructive" className="text-lg px-4 py-2">
-                Crítico
+              <Badge variant="destructive" className="text-base px-4 py-2">
+                Prioridade crítica
               </Badge>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="flex items-center gap-2">
-                <User className="size-5 text-purple-600" />
+                <User className="size-5 text-teal-700" />
                 <div>
-                  <p className="text-xs text-gray-500">Profissional</p>
+                  <p className="text-xs text-slate-500">Profissional</p>
                   <p className="text-sm font-medium">{patientData.professional}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Heart className="size-5 text-pink-600" />
+                <HeartPulse className="size-5 text-teal-700" />
                 <div>
-                  <p className="text-xs text-gray-500">Diagnóstico</p>
+                  <p className="text-xs text-slate-500">Diagnóstico</p>
                   <p className="text-sm font-medium">{patientData.diagnosis[0]}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <AlertTriangle className="size-5 text-red-600" />
+                <AlertTriangle className="size-5 text-red-700" />
                 <div>
-                  <p className="text-xs text-gray-500">Score de Risco</p>
-                  <p className="text-sm font-bold text-red-600">
-                    {patientData.riskScore}/10
-                  </p>
+                  <p className="text-xs text-slate-500">Score de risco</p>
+                  <p className="text-sm font-bold text-red-700">{patientData.riskScore}/10</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Calendar className="size-5 text-blue-600" />
+                <Calendar className="size-5 text-blue-700" />
                 <div>
-                  <p className="text-xs text-gray-500">Próxima consulta</p>
-                  <p className="text-sm font-medium">05/06/2026</p>
+                  <p className="text-xs text-slate-500">Próximo retorno</p>
+                  <p className="text-sm font-medium">{patientData.nextAppointment}</p>
                 </div>
               </div>
+            </div>
+            <div className="mt-5 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 text-sm text-slate-700 md:grid-cols-2">
+              <p className="flex items-center gap-2">
+                <MapPin className="size-4 text-slate-500" /> Origem: {patientData.unit}
+              </p>
+              <p className="flex items-center gap-2">
+                <ShieldCheck className="size-4 text-emerald-700" /> Unidade referência: {patientData.referenceUnit}
+              </p>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-white border border-gray-200 rounded-xl p-1 mb-6 flex-wrap h-auto">
-          <TabsTrigger value="visao-geral" className="rounded-lg">
-            Visão Geral
-          </TabsTrigger>
-          <TabsTrigger value="tratamentos" className="rounded-lg">
-            Tratamentos
-          </TabsTrigger>
-          <TabsTrigger value="exames" className="rounded-lg">
-            Exames
-          </TabsTrigger>
-          <TabsTrigger value="sintomas" className="rounded-lg">
-            Sintomas
-          </TabsTrigger>
-          <TabsTrigger value="historico" className="rounded-lg">
-            Histórico
-          </TabsTrigger>
+        <TabsList className="bg-white border border-slate-200 rounded-lg p-1 mb-6 flex-wrap h-auto">
+          <TabsTrigger value="visao-geral" className="rounded-md">Visão geral</TabsTrigger>
+          <TabsTrigger value="tratamentos" className="rounded-md">Tratamentos</TabsTrigger>
+          <TabsTrigger value="exames" className="rounded-md">Exames</TabsTrigger>
+          <TabsTrigger value="sintomas" className="rounded-md">Sintomas</TabsTrigger>
+          <TabsTrigger value="historico" className="rounded-md">Histórico</TabsTrigger>
         </TabsList>
 
-        {/* Visão Geral */}
         <TabsContent value="visao-geral" className="space-y-6">
-          {/* Alerts */}
-          <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <AlertTriangle className="size-5 text-red-600" />
-              Alertas Automáticos
-            </h3>
-            <div className="space-y-3">
-              {alerts.map((alert) => (
-                <div
-                  key={alert.id}
-                  className={`p-4 rounded-xl border-l-4 ${
-                    alert.type === 'critical'
-                      ? 'bg-red-50 border-red-500'
-                      : 'bg-yellow-50 border-yellow-500'
-                  }`}
-                >
-                  <p className="font-semibold text-gray-900 mb-1">
-                    {alert.message}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Recomendação: {alert.recommendation}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Activity className="size-5 text-purple-600" />
-                Evolução de Sintomas
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <Card className="p-6 bg-white border border-slate-200 shadow-sm rounded-lg lg:col-span-2">
+              <h3 className="text-lg font-semibold text-slate-950 mb-4 flex items-center gap-2">
+                <Clock className="size-5 text-teal-700" /> Linha do cuidado
               </h3>
-              <ResponsiveContainer width="100%" height={300}>
+              <div className="space-y-4">
+                {timeline.map((event, idx) => (
+                  <div key={event.id} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={`size-10 rounded-full flex items-center justify-center ${
+                          event.color === 'red'
+                            ? 'bg-red-100 text-red-700'
+                            : event.color === 'blue'
+                            ? 'bg-blue-100 text-blue-700'
+                            : event.color === 'teal'
+                            ? 'bg-teal-100 text-teal-700'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}
+                      >
+                        <event.icon className="size-5" />
+                      </div>
+                      {idx < timeline.length - 1 && <div className="w-0.5 h-12 bg-slate-200 my-1" />}
+                    </div>
+                    <div className="flex-1 pb-4">
+                      <div className="flex items-start justify-between gap-3 mb-1">
+                        <p className="font-semibold text-slate-950">{event.title}</p>
+                        <p className="text-xs text-slate-500 whitespace-nowrap">
+                          {new Date(event.date).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                      <p className="text-sm text-slate-600">{event.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="p-6 bg-white border border-slate-200 shadow-sm rounded-lg">
+              <h3 className="text-lg font-semibold text-slate-950 mb-4 flex items-center gap-2">
+                <AlertTriangle className="size-5 text-red-700" /> Pendências priorizadas
+              </h3>
+              <div className="space-y-3">
+                {careTasks.map((task) => (
+                  <div key={task.label} className="rounded-lg border border-slate-200 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-medium text-slate-950">{task.label}</p>
+                      <Badge
+                        variant={task.priority === 'Crítica' ? 'destructive' : 'outline'}
+                        className={task.priority === 'Alta' ? 'border-amber-300 bg-amber-50 text-amber-800' : ''}
+                      >
+                        {task.priority}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">Prazo: {task.due}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 text-xs text-slate-500">
+                A plataforma apoia a priorização operacional; decisões clínicas permanecem com a equipe responsável.
+              </p>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="p-6 bg-white border border-slate-200 shadow-sm rounded-lg">
+              <h3 className="text-lg font-semibold text-slate-950 mb-4 flex items-center gap-2">
+                <Activity className="size-5 text-teal-700" /> Evolução de sintomas
+              </h3>
+              <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={symptomsEvolution}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" stroke="#888" />
-                  <YAxis stroke="#888" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: 'none',
-                      borderRadius: '12px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    }}
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="date" stroke="#64748b" />
+                  <YAxis stroke="#64748b" />
+                  <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
                   <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="fadiga"
-                    stroke="#ec4899"
-                    strokeWidth={2}
-                    name="Fadiga"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="dor"
-                    stroke="#a855f7"
-                    strokeWidth={2}
-                    name="Dor"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="nausea"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    name="Náusea"
-                  />
+                  <Line type="monotone" dataKey="fadiga" stroke="#0f766e" strokeWidth={2} name="Fadiga" />
+                  <Line type="monotone" dataKey="dor" stroke="#dc2626" strokeWidth={2} name="Dor" />
+                  <Line type="monotone" dataKey="nausea" stroke="#d97706" strokeWidth={2} name="Náusea" />
                 </LineChart>
               </ResponsiveContainer>
             </Card>
 
-            <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FileText className="size-5 text-blue-600" />
-                Evolução Laboratorial (Hemoglobina)
+            <Card className="p-6 bg-white border border-slate-200 shadow-sm rounded-lg">
+              <h3 className="text-lg font-semibold text-slate-950 mb-4 flex items-center gap-2">
+                <FileText className="size-5 text-blue-700" /> Hemoglobina
               </h3>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={labEvolution}>
                   <defs>
                     <linearGradient id="colorHemo" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#dc2626" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#dc2626" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="date" stroke="#888" />
-                  <YAxis stroke="#888" domain={[0, 15]} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: 'none',
-                      borderRadius: '12px',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="hemoglobina"
-                    stroke="#ef4444"
-                    strokeWidth={3}
-                    fillOpacity={1}
-                    fill="url(#colorHemo)"
-                    name="Hemoglobina (g/dL)"
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="date" stroke="#64748b" />
+                  <YAxis stroke="#64748b" domain={[0, 15]} />
+                  <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+                  <Area type="monotone" dataKey="hemoglobina" stroke="#dc2626" strokeWidth={3} fill="url(#colorHemo)" name="Hemoglobina (g/dL)" />
                 </AreaChart>
               </ResponsiveContainer>
-              <div className="mt-4 p-3 bg-red-50 rounded-xl">
-                <p className="text-sm text-red-700">
-                  <TrendingDown className="size-4 inline mr-1" />
-                  Queda de 42% nos últimos 5 meses
-                </p>
-              </div>
             </Card>
           </div>
-
-          {/* Timeline */}
-          <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-              <Clock className="size-5 text-purple-600" />
-              Timeline Clínica
-            </h3>
-            <div className="space-y-4">
-              {timeline.map((event, idx) => (
-                <div key={event.id} className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div
-                      className={`size-10 rounded-full bg-gradient-to-br ${
-                        event.color === 'red'
-                          ? 'from-red-400 to-red-600'
-                          : event.color === 'blue'
-                          ? 'from-blue-400 to-blue-600'
-                          : event.color === 'purple'
-                          ? 'from-purple-400 to-purple-600'
-                          : 'from-pink-400 to-pink-600'
-                      } flex items-center justify-center`}
-                    >
-                      <event.icon className="size-5 text-white" />
-                    </div>
-                    {idx < timeline.length - 1 && (
-                      <div className="w-0.5 h-12 bg-gray-200 my-1" />
-                    )}
-                  </div>
-                  <div className="flex-1 pb-4">
-                    <div className="flex items-start justify-between mb-1">
-                      <p className="font-semibold text-gray-900">{event.title}</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(event.date).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
-                    <p className="text-sm text-gray-600">{event.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
         </TabsContent>
 
-        {/* Tratamentos */}
         <TabsContent value="tratamentos" className="space-y-6">
           {treatments.map((treatment) => (
-            <Card
-              key={treatment.id}
-              className="p-6 bg-white border-0 shadow-lg rounded-2xl"
-            >
+            <Card key={treatment.id} className="p-6 bg-white border border-slate-200 shadow-sm rounded-lg">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    {treatment.type}
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <h3 className="text-xl font-semibold text-slate-950">{treatment.type}</h3>
+                  <p className="text-sm text-slate-500 mt-1">
                     Início: {new Date(treatment.startDate).toLocaleDateString('pt-BR')}
-                    {treatment.endDate &&
-                      ` • Término previsto: ${new Date(
-                        treatment.endDate
-                      ).toLocaleDateString('pt-BR')}`}
+                    {treatment.endDate && ` • Término previsto: ${new Date(treatment.endDate).toLocaleDateString('pt-BR')}`}
                   </p>
                 </div>
-                <Badge
-                  variant={
-                    treatment.status === 'Em andamento' ? 'default' : 'secondary'
-                  }
-                  className="text-sm"
-                >
+                <Badge variant={treatment.status === 'Em andamento' ? 'default' : 'secondary'}>
                   {treatment.status}
                 </Badge>
               </div>
@@ -432,30 +348,22 @@ export function PerfilPaciente() {
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-gray-700">
-                      Progresso: {treatment.sessions.completed}/{treatment.sessions.total}{' '}
-                      sessões
+                    <p className="text-sm font-medium text-slate-700">
+                      Progresso: {treatment.sessions.completed}/{treatment.sessions.total} sessões
                     </p>
-                    <p className="text-sm font-bold text-purple-600">
-                      {treatment.progress}%
-                    </p>
+                    <p className="text-sm font-bold text-teal-700">{treatment.progress}%</p>
                   </div>
-                  <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-pink-500 to-purple-600 rounded-full transition-all duration-500"
-                      style={{ width: `${treatment.progress}%` }}
-                    />
+                  <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-teal-700 rounded-full transition-all duration-500" style={{ width: `${treatment.progress}%` }} />
                   </div>
                 </div>
 
                 {treatment.adverseEffects.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">
-                      Efeitos Adversos:
-                    </p>
+                    <p className="text-sm font-medium text-slate-700 mb-2">Sintomas e efeitos reportados</p>
                     <div className="flex flex-wrap gap-2">
-                      {treatment.adverseEffects.map((effect, idx) => (
-                        <Badge key={idx} variant="outline" className="bg-red-50">
+                      {treatment.adverseEffects.map((effect) => (
+                        <Badge key={effect} variant="outline" className="bg-red-50 border-red-200 text-red-700">
                           {effect}
                         </Badge>
                       ))}
@@ -467,24 +375,23 @@ export function PerfilPaciente() {
           ))}
         </TabsContent>
 
-        {/* Other tabs placeholder */}
         <TabsContent value="exames">
-          <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
-            <p className="text-gray-500">
-              Veja a tela dedicada de Exames no menu lateral.
+          <Card className="p-6 bg-white border border-slate-200 shadow-sm rounded-lg">
+            <p className="text-slate-600 flex items-center gap-2">
+              <CheckCircle2 className="size-5 text-teal-700" /> Veja a tela dedicada de exames no menu lateral.
             </p>
           </Card>
         </TabsContent>
         <TabsContent value="sintomas">
-          <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
-            <p className="text-gray-500">
-              Veja a tela dedicada de Avaliações no menu lateral.
+          <Card className="p-6 bg-white border border-slate-200 shadow-sm rounded-lg">
+            <p className="text-slate-600 flex items-center gap-2">
+              <CheckCircle2 className="size-5 text-teal-700" /> Veja a tela dedicada de avaliações no menu lateral.
             </p>
           </Card>
         </TabsContent>
         <TabsContent value="historico">
-          <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
-            <p className="text-gray-500">Histórico completo em desenvolvimento.</p>
+          <Card className="p-6 bg-white border border-slate-200 shadow-sm rounded-lg">
+            <p className="text-slate-600">Histórico completo em desenvolvimento.</p>
           </Card>
         </TabsContent>
       </Tabs>
