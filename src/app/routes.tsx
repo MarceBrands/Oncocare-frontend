@@ -7,9 +7,11 @@ import { Tratamentos } from "./pages/Tratamentos";
 import { Exames } from "./pages/Exames";
 import { Sintomas } from "./pages/Sintomas";
 import { Bioimpedancia } from "./pages/Bioimpedancia";
+import { Apresentacao } from "./pages/Apresentacao";
 import { Layout } from "./components/Layout";
 
 export const router = createBrowserRouter([
+  { path: "/apresentacao", Component: Apresentacao },
   {
     path: "/",
     Component: Layout,
