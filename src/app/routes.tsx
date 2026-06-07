@@ -8,6 +8,7 @@ import { Exames } from "./pages/Exames";
 import { Sintomas } from "./pages/Sintomas";
 import { Bioimpedancia } from "./pages/Bioimpedancia";
 import { Apresentacao } from "./pages/Apresentacao";
+import { Configuracoes } from "./pages/Configuracoes";
 import { Layout } from "./components/Layout";
 
 export const router = createBrowserRouter([
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: "exames", Component: Exames },
       { path: "sintomas", Component: Sintomas },
       { path: "bioimpedancia", Component: Bioimpedancia },
+      { path: "configuracoes", Component: Configuracoes },
     ],
   },
 ]);
