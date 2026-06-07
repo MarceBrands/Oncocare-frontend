@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Outlet, Link } from 'react-router';
-import { Plus, Search, MapPin, CalendarDays, ShieldCheck } from 'lucide-react';
+import { Plus, Search, ShieldCheck } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select';
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '../components/ui/accordion';
 import { supabase, type PacienteRow } from '../../lib/supabase';
 
 function maskCpf(cpf: string) {
@@ -35,6 +34,10 @@ function getAge(birthDate: string) {
   }
 
   return age;
+}
+
+function formatDate(date: string | null) {
+  return date ? new Date(date).toLocaleDateString('pt-BR') : 'sem data';
 }
 
 export function Pacientes() {
@@ -77,19 +80,20 @@ export function Pacientes() {
       return (
         patient.nome.toLowerCase().includes(term) ||
         patient.cpf.toLowerCase().includes(term) ||
-        patient.id.toLowerCase().includes(term)
+        patient.id.toLowerCase().includes(term) ||
+        patient.tipo_atendimento.toLowerCase().includes(term)
       );
     });
   }, [patients, search]);
 
   return (
     <>
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex flex-col gap-4 mb-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-950">Pacientes</h1>
             <p className="text-slate-600 mt-2 max-w-2xl">
-              Acompanhe risco, pendencias e continuidade do cuidado em servicos publicos, clinicas privadas e atendimentos particulares.
+              Lista operacional de pacientes, com cadastro, atendimento e dados clinicos principais em cada linha.
             </p>
           </div>
           <Link to="/pacientes/novo">
@@ -101,129 +105,105 @@ export function Pacientes() {
         </div>
 
         <Card className="p-4 bg-white border border-slate-200 shadow-sm rounded-lg">
-          <div className="flex flex-col gap-4 xl:flex-row">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-5 text-slate-400" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar por nome, CPF ou id..."
-                className="pl-10 rounded-lg border-slate-200"
-              />
-            </div>
-            <Select disabled>
-              <SelectTrigger className="w-full xl:w-52 rounded-lg">
-                <SelectValue placeholder="Tipo de cancer" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select disabled>
-              <SelectTrigger className="w-full xl:w-48 rounded-lg">
-                <SelectValue placeholder="Risco" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select disabled>
-              <SelectTrigger className="w-full xl:w-56 rounded-lg">
-                <SelectValue placeholder="Linha do cuidado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-slate-400" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por nome, CPF, tipo de atendimento ou id..."
+              className="pl-10 rounded-lg border-slate-200"
+            />
           </div>
         </Card>
       </div>
 
       {loading && (
-        <Card className="p-8 bg-white border border-slate-200 shadow-sm rounded-lg">
+        <Card className="p-6 bg-white border border-slate-200 shadow-sm rounded-lg">
           <p className="text-slate-600">Carregando pacientes...</p>
         </Card>
       )}
 
       {!loading && error && (
-        <Card className="p-8 bg-red-50 border border-red-200 shadow-sm rounded-lg">
+        <Card className="p-6 bg-red-50 border border-red-200 shadow-sm rounded-lg">
           <p className="font-semibold text-red-900">Nao consegui buscar pacientes no Supabase.</p>
           <p className="text-sm text-red-800 mt-2">{error}</p>
         </Card>
       )}
 
       {!loading && !error && filteredPatients.length === 0 && (
-        <Card className="p-8 bg-white border border-slate-200 shadow-sm rounded-lg">
-          <p className="font-semibold text-slate-950">Nenhuma paciente cadastrada ainda.</p>
+        <Card className="p-6 bg-white border border-slate-200 shadow-sm rounded-lg">
+          <p className="font-semibold text-slate-950">Nenhuma paciente encontrada.</p>
           <p className="text-sm text-slate-600 mt-2">
-            Clique em Nova paciente para gravar o primeiro cadastro direto no Supabase.
+            Cadastre uma paciente ou refine a busca.
           </p>
         </Card>
       )}
 
       {!loading && !error && filteredPatients.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {filteredPatients.map((patient) => (
-            <Link key={patient.id} to={`/pacientes/${patient.id}`}>
-              <Card className="p-5 bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 rounded-lg h-full">
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="size-14 rounded-lg flex items-center justify-center font-bold text-white text-base bg-cyan-700">
-                    {patient.nome.split(' ')[0]?.[0] ?? 'P'}
-                    {patient.nome.split(' ')[1]?.[0] ?? ''}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-slate-950 truncate">{patient.nome}</h3>
-                    <p className="text-sm text-slate-500">
-                      {getAge(patient.data_nascimento)} anos
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                      <ShieldCheck className="size-3" /> CPF protegido: {maskCpf(patient.cpf)}
-                    </p>
-                  </div>
-                </div>
+        <Card className="bg-white border border-slate-200 shadow-sm rounded-lg overflow-hidden">
+          <div className="hidden md:grid grid-cols-[minmax(0,1.4fr)_8rem_10rem_10rem] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-normal text-slate-500">
+            <span>Paciente</span>
+            <span>Idade</span>
+            <span>Atendimento</span>
+            <span>Cadastro</span>
+          </div>
 
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-xs text-slate-500 mb-2">Diagnostico</p>
-                    <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                      A vincular
+          <Accordion type="single" collapsible>
+            {filteredPatients.map((patient) => (
+              <AccordionItem key={patient.id} value={patient.id} className="border-slate-200 px-5">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="grid w-full grid-cols-1 gap-2 pr-4 text-left md:grid-cols-[minmax(0,1.4fr)_8rem_10rem_10rem] md:items-center md:gap-4">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-950">{patient.nome}</p>
+                      <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+                        <ShieldCheck className="size-3" />
+                        CPF protegido: {maskCpf(patient.cpf)}
+                      </p>
+                    </div>
+                    <span className="text-sm text-slate-700">{getAge(patient.data_nascimento)} anos</span>
+                    <Badge variant="secondary" className="w-fit bg-slate-100 text-slate-700">
+                      {patient.tipo_atendimento}
                     </Badge>
+                    <span className="text-sm text-slate-600">{formatDate(patient.created_at)}</span>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
-                    <div>
-                      <p className="text-xs text-slate-500">Atendimento</p>
-                      <p className="text-lg font-bold text-slate-950">{patient.tipo_atendimento}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-slate-500">Status</p>
-                      <Badge variant="secondary">Cadastrada</Badge>
-                    </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="grid gap-4 rounded-lg bg-slate-50 p-4 md:grid-cols-2 lg:grid-cols-3">
+                    <InfoBlock label="Diagnostico" value="A vincular" />
+                    <InfoBlock label="Tipo de atendimento" value={patient.tipo_atendimento} />
+                    <InfoBlock label="Data de nascimento" value={formatDate(patient.data_nascimento)} />
+                    <InfoBlock label="Medico vinculado" value={patient.medico_id ?? 'Nao informado'} />
+                    <InfoBlock label="Ultima atualizacao" value={formatDate(patient.updated_at)} />
                   </div>
-
-                  <div className="space-y-2 text-xs text-slate-600 pt-3 border-t border-slate-100">
-                    <p className="flex items-center gap-2">
-                      <MapPin className="size-4 text-slate-400" /> {patient.tipo_atendimento}
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <CalendarDays className="size-4 text-slate-400" />
-                      Cadastro:{' '}
-                      {patient.created_at
-                        ? new Date(patient.created_at).toLocaleDateString('pt-BR')
-                        : 'sem data'}
-                    </p>
-                    <p className="font-medium text-slate-800">
-                      Linha do cuidado: aguardando dados clinicos
-                    </p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Link to={`/pacientes/${patient.id}`}>
+                      <Button variant="outline" size="sm">
+                        Abrir perfil
+                      </Button>
+                    </Link>
+                    <Link to="/sintomas">
+                      <Button size="sm" className="bg-cyan-700 hover:bg-cyan-800">
+                        Registrar avaliacao
+                      </Button>
+                    </Link>
                   </div>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </Card>
       )}
 
       <Outlet />
     </>
+  );
+}
+
+function InfoBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="mt-1 break-words text-sm font-medium text-slate-900">{value}</p>
+    </div>
   );
 }
