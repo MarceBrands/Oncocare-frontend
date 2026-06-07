@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router';
 import {
   Activity,
@@ -36,196 +36,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-
-interface ExamResult {
-  name: string;
-  value: number;
-  unit: string;
-  reference: string;
-  status: 'normal' | 'low' | 'high' | 'critical';
-  trend?: 'up' | 'down' | 'stable';
-}
-
-const examsData: Record<string, ExamResult[]> = {
-  hemograma: [
-    {
-      name: 'Hemoglobina',
-      value: 7.2,
-      unit: 'g/dL',
-      reference: '12.0 - 16.0',
-      status: 'critical',
-      trend: 'down',
-    },
-    {
-      name: 'Hematócrito',
-      value: 28.5,
-      unit: '%',
-      reference: '36.0 - 46.0',
-      status: 'critical',
-      trend: 'down',
-    },
-    {
-      name: 'Leucócitos',
-      value: 4200,
-      unit: '/µL',
-      reference: '4500 - 11000',
-      status: 'low',
-      trend: 'down',
-    },
-    {
-      name: 'Neutrófilos',
-      value: 1800,
-      unit: '/µL',
-      reference: '2000 - 7500',
-      status: 'low',
-      trend: 'down',
-    },
-    {
-      name: 'Linfócitos',
-      value: 1900,
-      unit: '/µL',
-      reference: '1000 - 4000',
-      status: 'normal',
-      trend: 'stable',
-    },
-    {
-      name: 'Plaquetas',
-      value: 180000,
-      unit: '/µL',
-      reference: '150000 - 400000',
-      status: 'normal',
-      trend: 'down',
-    },
-  ],
-  funcaoRenal: [
-    {
-      name: 'Creatinina',
-      value: 1.3,
-      unit: 'mg/dL',
-      reference: '0.6 - 1.2',
-      status: 'high',
-      trend: 'up',
-    },
-    {
-      name: 'Ureia',
-      value: 52,
-      unit: 'mg/dL',
-      reference: '15 - 45',
-      status: 'high',
-      trend: 'up',
-    },
-  ],
-  funcaoHepatica: [
-    {
-      name: 'TGO/AST',
-      value: 38,
-      unit: 'U/L',
-      reference: '< 40',
-      status: 'normal',
-      trend: 'stable',
-    },
-    {
-      name: 'TGP/ALT',
-      value: 42,
-      unit: 'U/L',
-      reference: '< 41',
-      status: 'high',
-      trend: 'up',
-    },
-    {
-      name: 'Fosfatase Alcalina',
-      value: 95,
-      unit: 'U/L',
-      reference: '40 - 150',
-      status: 'normal',
-      trend: 'stable',
-    },
-    {
-      name: 'GGT',
-      value: 35,
-      unit: 'U/L',
-      reference: '< 55',
-      status: 'normal',
-      trend: 'stable',
-    },
-    {
-      name: 'Bilirrubina Total',
-      value: 0.8,
-      unit: 'mg/dL',
-      reference: '< 1.2',
-      status: 'normal',
-      trend: 'stable',
-    },
-    {
-      name: 'Albumina',
-      value: 3.2,
-      unit: 'g/dL',
-      reference: '3.5 - 5.5',
-      status: 'low',
-      trend: 'down',
-    },
-  ],
-  eletrolitos: [
-    {
-      name: 'Sódio',
-      value: 138,
-      unit: 'mEq/L',
-      reference: '136 - 145',
-      status: 'normal',
-      trend: 'stable',
-    },
-    {
-      name: 'Potássio',
-      value: 4.2,
-      unit: 'mEq/L',
-      reference: '3.5 - 5.0',
-      status: 'normal',
-      trend: 'stable',
-    },
-    {
-      name: 'Cálcio',
-      value: 9.1,
-      unit: 'mg/dL',
-      reference: '8.5 - 10.5',
-      status: 'normal',
-      trend: 'stable',
-    },
-    {
-      name: 'Magnésio',
-      value: 1.7,
-      unit: 'mg/dL',
-      reference: '1.7 - 2.2',
-      status: 'normal',
-      trend: 'stable',
-    },
-  ],
-  inflamacao: [
-    {
-      name: 'PCR',
-      value: 85,
-      unit: 'mg/L',
-      reference: '< 5',
-      status: 'critical',
-      trend: 'up',
-    },
-  ],
-};
-
-const categories = [
-  { id: 'hemograma', name: 'Hemograma', icon: Activity },
-  { id: 'funcaoRenal', name: 'Função Renal', icon: FileText },
-  { id: 'funcaoHepatica', name: 'Função Hepática', icon: FileText },
-  { id: 'eletrolitos', name: 'Eletrólitos', icon: Activity },
-  { id: 'inflamacao', name: 'Inflamação', icon: AlertTriangle },
-];
-
-const hemoglobinaHistory = [
-  { month: 'Jan', value: 12.5, min: 12, max: 16 },
-  { month: 'Fev', value: 11.8, min: 12, max: 16 },
-  { month: 'Mar', value: 10.2, min: 12, max: 16 },
-  { month: 'Abr', value: 9.5, min: 12, max: 16 },
-  { month: 'Mai', value: 7.2, min: 12, max: 16 },
-];
+import { getExamsOverview, type ExamsOverview } from '../../lib/api';
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -285,16 +96,49 @@ const getStatusText = (status: string) => {
 };
 
 export function Exames() {
-  const [selectedCategory, setSelectedCategory] = useState('hemograma');
-  const [selectedPatient, setSelectedPatient] = useState('maria');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedPatient, setSelectedPatient] = useState('');
+  const [overview, setOverview] = useState<ExamsOverview | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const currentExams = examsData[selectedCategory] || [];
-  const criticalCount = Object.values(examsData)
+  useEffect(() => {
+    async function loadExams() {
+      try {
+        const data = await getExamsOverview(selectedPatient || undefined);
+        setOverview(data);
+
+        if (data.selectedPatientId && !selectedPatient) {
+          setSelectedPatient(data.selectedPatientId);
+        }
+
+        if (data.categories.length > 0 && !data.categories.some((item) => item.id === selectedCategory)) {
+          setSelectedCategory(data.categories[0].id);
+        }
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Erro inesperado.');
+      }
+    }
+
+    loadExams();
+  }, [selectedPatient]);
+
+  const currentExamsData = overview?.examsData ?? {};
+  const currentCategories = overview?.categories ?? [];
+  const currentHistory = overview?.hemoglobinaHistory ?? [];
+  const currentExams = currentExamsData[selectedCategory] || [];
+  const hemoglobinaReference = currentHistory.find((item) => item.min && item.max);
+  const latestHemoglobina = currentHistory.at(-1);
+  const criticalCount = Object.values(currentExamsData)
     .flat()
     .filter((e) => e.status === 'critical').length;
-  const attentionCount = Object.values(examsData)
+  const attentionCount = Object.values(currentExamsData)
     .flat()
     .filter((e) => e.status === 'low' || e.status === 'high').length;
+  const iconMap = {
+    activity: Activity,
+    file: FileText,
+    alert: AlertTriangle,
+  };
 
   return (
     <>
@@ -303,6 +147,8 @@ export function Exames() {
         <p className="text-gray-500 mt-2">
           Acompanhamento detalhado de resultados laboratoriais
         </p>
+        {!overview && !error && <p className="mt-2 text-sm text-gray-500">Carregando exames...</p>}
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
 
       {/* Stats */}
@@ -339,7 +185,7 @@ export function Exames() {
             <div>
               <p className="text-sm text-gray-500">Dentro da Normalidade</p>
               <p className="text-2xl font-bold text-gray-900">
-                {Object.values(examsData).flat().filter((e) => e.status === 'normal')
+                {Object.values(currentExamsData).flat().filter((e) => e.status === 'normal')
                   .length}
               </p>
             </div>
@@ -356,13 +202,15 @@ export function Exames() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="maria">Maria Santos Silva</SelectItem>
-              <SelectItem value="ana">Ana Paula Oliveira</SelectItem>
-              <SelectItem value="juliana">Juliana Costa</SelectItem>
+              {(overview?.patients ?? []).map((patient) => (
+                <SelectItem key={patient.id} value={patient.id}>
+                  {patient.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Badge variant="outline" className="ml-auto">
-            Última coleta: 28/05/2026
+            Última coleta: {overview?.lastCollection ? new Date(`${overview.lastCollection}T00:00:00`).toLocaleDateString('pt-BR') : 'Sem coleta'}
           </Badge>
         </div>
       </Card>
@@ -374,14 +222,16 @@ export function Exames() {
           <Card className="p-4 bg-white border-0 shadow-lg rounded-2xl">
             <p className="text-sm font-semibold text-gray-900 mb-3">Categorias</p>
             <div className="space-y-2">
-              {categories.map((category) => {
-                const categoryExams = examsData[category.id] || [];
+              {currentCategories.map((category) => {
+                const categoryExams = currentExamsData[category.id] || [];
                 const hasCritical = categoryExams.some(
                   (e) => e.status === 'critical'
                 );
                 const hasAttention = categoryExams.some(
                   (e) => e.status === 'low' || e.status === 'high'
                 );
+
+                const CategoryIcon = iconMap[category.iconKey as keyof typeof iconMap] ?? FileText;
 
                 return (
                   <button
@@ -393,7 +243,7 @@ export function Exames() {
                         : 'hover:bg-purple-50 text-gray-700'
                     }`}
                   >
-                    <category.icon className="size-5" />
+                    <CategoryIcon className="size-5" />
                     <span className="text-sm font-medium flex-1 text-left">
                       {category.name}
                     </span>
@@ -414,7 +264,7 @@ export function Exames() {
         <div className="lg:col-span-3 space-y-6">
           <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {categories.find((c) => c.id === selectedCategory)?.name}
+              {currentCategories.find((c) => c.id === selectedCategory)?.name ?? 'Selecione uma categoria'}
             </h3>
             <div className="overflow-x-auto">
               <Table>
@@ -428,8 +278,15 @@ export function Exames() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentExams.map((exam, idx) => (
-                    <TableRow key={idx}>
+                  {currentExams.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-sm text-gray-500">
+                        Nenhum exame registrado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {currentExams.map((exam) => (
+                    <TableRow key={exam.id}>
                       <TableCell className="font-medium">{exam.name}</TableCell>
                       <TableCell className="text-center">
                         <span className="font-semibold">
@@ -467,7 +324,7 @@ export function Exames() {
                 Evolução da Hemoglobina
               </h3>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={hemoglobinaHistory}>
+                <LineChart data={currentHistory}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="month" stroke="#888" />
                   <YAxis stroke="#888" domain={[0, 18]} />
@@ -479,18 +336,30 @@ export function Exames() {
                       boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                     }}
                   />
-                  <ReferenceLine
-                    y={12}
-                    stroke="#10b981"
-                    strokeDasharray="3 3"
-                    label={{ value: 'Mín: 12', fill: '#10b981', fontSize: 12 }}
-                  />
-                  <ReferenceLine
-                    y={16}
-                    stroke="#10b981"
-                    strokeDasharray="3 3"
-                    label={{ value: 'Máx: 16', fill: '#10b981', fontSize: 12 }}
-                  />
+                  {hemoglobinaReference && (
+                    <ReferenceLine
+                      y={hemoglobinaReference.min}
+                      stroke="#10b981"
+                      strokeDasharray="3 3"
+                      label={{
+                        value: `Min: ${hemoglobinaReference.min}`,
+                        fill: '#10b981',
+                        fontSize: 12,
+                      }}
+                    />
+                  )}
+                  {hemoglobinaReference && (
+                    <ReferenceLine
+                      y={hemoglobinaReference.max}
+                      stroke="#10b981"
+                      strokeDasharray="3 3"
+                      label={{
+                        value: `Max: ${hemoglobinaReference.max}`,
+                        fill: '#10b981',
+                        fontSize: 12,
+                      }}
+                    />
+                  )}
                   <Line
                     type="monotone"
                     dataKey="value"
@@ -501,18 +370,20 @@ export function Exames() {
                   />
                 </LineChart>
               </ResponsiveContainer>
-              <div className="mt-4 p-4 bg-red-50 rounded-xl">
+              {latestHemoglobina && hemoglobinaReference && latestHemoglobina.value < hemoglobinaReference.min && (
+                <div className="mt-4 p-4 bg-red-50 rounded-xl">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="size-5 text-red-600" />
                   <p className="font-semibold text-red-900">
-                    Alerta: Hemoglobina Crítica
+                    Alerta: Hemoglobina abaixo da referencia
                   </p>
                 </div>
                 <p className="text-sm text-red-700">
-                  Valor atual 7.2 g/dL está 42% abaixo do limite mínimo aceitável.
-                  Recomenda-se avaliação urgente e possível transfusão sanguínea.
+                  Valor atual {latestHemoglobina.value} g/dL está abaixo do limite mínimo
+                  de {hemoglobinaReference.min} g/dL.
                 </p>
               </div>
+              )}
             </Card>
           )}
         </div>

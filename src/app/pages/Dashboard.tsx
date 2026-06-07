@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router';
 import {
   Users,
@@ -25,134 +26,38 @@ import {
   Legend,
 } from 'recharts';
 import { Link } from 'react-router';
-
-const statsCards = [
-  {
-    title: 'Total de Pacientes',
-    value: '127',
-    icon: Users,
-    color: 'from-blue-500 to-blue-600',
-    bgColor: 'bg-blue-50',
-    textColor: 'text-blue-600',
-    trend: '+12% este mês',
-  },
-  {
-    title: 'Pacientes Críticos',
-    value: '8',
-    icon: AlertTriangle,
-    color: 'from-red-500 to-red-600',
-    bgColor: 'bg-red-50',
-    textColor: 'text-red-600',
-    trend: 'Atenção imediata',
-  },
-  {
-    title: 'Tratamentos Ativos',
-    value: '64',
-    icon: Activity,
-    color: 'from-purple-500 to-purple-600',
-    bgColor: 'bg-purple-50',
-    textColor: 'text-purple-600',
-    trend: 'Em andamento',
-  },
-  {
-    title: 'Alertas Clínicos',
-    value: '15',
-    icon: Heart,
-    color: 'from-pink-500 to-pink-600',
-    bgColor: 'bg-pink-50',
-    textColor: 'text-pink-600',
-    trend: '3 novos hoje',
-  },
-];
-
-const evolutionData = [
-  { month: 'Jan', normal: 45, atencao: 12, critico: 3 },
-  { month: 'Fev', normal: 52, atencao: 10, critico: 5 },
-  { month: 'Mar', normal: 48, atencao: 15, critico: 4 },
-  { month: 'Abr', normal: 61, atencao: 11, critico: 2 },
-  { month: 'Mai', normal: 55, atencao: 14, critico: 8 },
-];
-
-const treatmentData = [
-  { name: 'Quimioterapia', value: 35, color: '#ec4899' },
-  { name: 'Radioterapia', value: 28, color: '#a855f7' },
-  { name: 'Braquiterapia', value: 18, color: '#3b82f6' },
-  { name: 'Hormonioterapia', value: 12, color: '#8b5cf6' },
-];
-
-const recentPatients = [
-  {
-    id: 1,
-    name: 'Maria Santos Silva',
-    age: 48,
-    diagnosis: 'Câncer de Mama',
-    status: 'critical',
-    lastVisit: '2026-05-30',
-    alert: 'Hemoglobina baixa',
-  },
-  {
-    id: 2,
-    name: 'Ana Paula Oliveira',
-    age: 55,
-    diagnosis: 'Câncer de Colo do Útero',
-    status: 'attention',
-    lastVisit: '2026-05-29',
-    alert: 'Neutropenia leve',
-  },
-  {
-    id: 3,
-    name: 'Juliana Costa',
-    age: 42,
-    diagnosis: 'Câncer de Mama',
-    status: 'stable',
-    lastVisit: '2026-05-28',
-    alert: null,
-  },
-  {
-    id: 4,
-    name: 'Fernanda Lima',
-    age: 51,
-    diagnosis: 'Câncer de Colo do Útero',
-    status: 'critical',
-    lastVisit: '2026-05-30',
-    alert: 'PCR elevado',
-  },
-  {
-    id: 5,
-    name: 'Carolina Mendes',
-    age: 39,
-    diagnosis: 'Câncer de Mama',
-    status: 'stable',
-    lastVisit: '2026-05-27',
-    alert: null,
-  },
-];
-
-const alerts = [
-  {
-    id: 1,
-    patient: 'Maria Santos Silva',
-    type: 'critical',
-    message: 'Hemoglobina 7.2 g/dL - Risco de anemia grave',
-    time: '2h atrás',
-  },
-  {
-    id: 2,
-    patient: 'Fernanda Lima',
-    type: 'critical',
-    message: 'PCR 85 mg/L - Possível processo inflamatório',
-    time: '4h atrás',
-  },
-  {
-    id: 3,
-    patient: 'Ana Paula Oliveira',
-    type: 'warning',
-    message: 'Neutrófilos 1200/µL - Monitorar neutropenia',
-    time: '6h atrás',
-  },
-];
+import { getDashboard, type DashboardData } from '../../lib/api';
 
 export function Dashboard() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        setData(await getDashboard());
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Erro inesperado.');
+      }
+    }
+
+    loadDashboard();
+  }, []);
+
+  const dashboardData = data ?? {
+    statsCards: [],
+    evolutionData: [],
+    treatmentData: [],
+    recentPatients: [],
+    alerts: [],
+  };
+  const iconMap = {
+    users: Users,
+    alert: AlertTriangle,
+    activity: Activity,
+    heart: Heart,
+  };
+
   return (
     <>
       <div className="mb-8">
@@ -162,13 +67,21 @@ export function Dashboard() {
         <p className="text-gray-500 mt-2">
           Visão geral do acompanhamento oncológico
         </p>
+        {!data && !error && <p className="mt-2 text-sm text-gray-500">Carregando dados...</p>}
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statsCards.map((stat) => (
-          <Card
-            key={stat.title}
+        {dashboardData.statsCards.map((stat) => {
+          const StatIcon =
+            typeof stat.icon === 'string'
+              ? iconMap[stat.icon as keyof typeof iconMap] ?? Activity
+              : stat.icon;
+
+          return (
+            <Card
+              key={stat.title}
             className="p-6 bg-white border-0 shadow-lg hover:shadow-xl transition-all duration-300 rounded-2xl"
           >
             <div className="flex items-start justify-between">
@@ -182,11 +95,12 @@ export function Dashboard() {
               <div
                 className={`size-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}
               >
-                <stat.icon className="size-6 text-white" />
+                <StatIcon className="size-6 text-white" />
               </div>
             </div>
           </Card>
-        ))}
+          );
+        })}
       </div>
 
       {/* Charts Row */}
@@ -198,7 +112,7 @@ export function Dashboard() {
             Evolução Clínica por Status
           </h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={evolutionData}>
+            <BarChart data={dashboardData.evolutionData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" stroke="#888" />
               <YAxis stroke="#888" />
@@ -237,7 +151,7 @@ export function Dashboard() {
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={treatmentData}
+                data={dashboardData.treatmentData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -248,7 +162,7 @@ export function Dashboard() {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {treatmentData.map((entry, index) => (
+                {dashboardData.treatmentData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -282,7 +196,7 @@ export function Dashboard() {
             </Link>
           </div>
           <div className="space-y-3">
-            {recentPatients.map((patient) => (
+            {dashboardData.recentPatients.map((patient) => (
               <Link
                 key={patient.id}
                 to={`/pacientes/${patient.id}`}
@@ -345,7 +259,7 @@ export function Dashboard() {
             Alertas Clínicos
           </h3>
           <div className="space-y-4">
-            {alerts.map((alert) => (
+            {dashboardData.alerts.map((alert) => (
               <div
                 key={alert.id}
                 className={`p-4 rounded-xl border-l-4 ${

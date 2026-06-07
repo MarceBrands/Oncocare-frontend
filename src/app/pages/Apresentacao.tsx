@@ -70,7 +70,7 @@ export function Apresentacao() {
             <div>
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-300/10 px-3 py-1 text-sm text-cyan-100">
                 <ShieldCheck className="size-4" />
-                Plataforma clinica com banco Supabase
+                Plataforma clinica com Postgres local
               </div>
               <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-normal sm:text-5xl lg:text-6xl">
                 OncoCare
@@ -110,10 +110,10 @@ export function Apresentacao() {
                   </span>
                 </div>
                 <div className="grid gap-4 p-5 sm:grid-cols-2">
-                  <PreviewMetric label="Pacientes" value="127" tone="teal" />
-                  <PreviewMetric label="Alertas criticos" value="8" tone="red" />
-                  <PreviewMetric label="Tratamentos ativos" value="64" tone="blue" />
-                  <PreviewMetric label="Avaliacoes semanais" value="42" tone="amber" />
+                  <PreviewMetric label="Pacientes" value="CRUD" tone="teal" />
+                  <PreviewMetric label="Alertas criticos" value="API" tone="red" />
+                  <PreviewMetric label="Tratamentos ativos" value="SQL" tone="blue" />
+                  <PreviewMetric label="Avaliacoes semanais" value="Seed" tone="amber" />
                 </div>
                 <div className="border-t border-slate-200 p-5">
                   <p className="mb-3 text-sm font-semibold">Fluxo assistencial</p>

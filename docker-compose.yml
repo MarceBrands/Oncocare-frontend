@@ -28,6 +28,21 @@ services:
     command: ["sh", "/migrate.sh"]
     restart: "no"
 
+  seed:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://oncocare:oncocare@postgres:5432/oncocare
+    volumes:
+      - ./db/seeds:/seeds:ro
+      - ./db/seed.sh:/seed.sh:ro
+    command: ["sh", "/seed.sh"]
+    restart: "no"
+
   app:
     build:
       context: .

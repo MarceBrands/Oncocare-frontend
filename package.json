@@ -6,8 +6,10 @@
   "scripts": {
     "build": "vite build",
     "db:migrate": "docker compose run --rm migrate",
+    "db:seed": "docker compose run --rm seed",
     "dev": "vite",
-    "dev:docker": "docker compose up --build"
+    "dev:docker": "docker compose up --build",
+    "test": "node --experimental-strip-types --test \"server/**/*.test.ts\" \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

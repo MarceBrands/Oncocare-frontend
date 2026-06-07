@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet } from 'react-router';
 import { AlertCircle, Calendar, Clock, Search } from 'lucide-react';
 import { Card } from '../components/ui/card';
@@ -10,70 +11,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '../components/ui/accordion';
+import { listTreatments, type Treatment } from '../../lib/api';
 
-const treatments = [
-  {
-    id: 1,
-    patient: 'Maria Santos Silva',
-    type: 'Quimioterapia',
-    protocol: 'AC-T',
-    status: 'active',
-    startDate: '2026-03-01',
-    endDate: '2026-07-15',
-    progress: 70,
-    sessions: { completed: 8, total: 12 },
-    nextSession: '2026-06-05',
-    adverseEffects: ['Fadiga intensa', 'Nausea', 'Queda de cabelo'],
-  },
-  {
-    id: 2,
-    patient: 'Ana Paula Oliveira',
-    type: 'Radioterapia',
-    protocol: 'IMRT Pelvica',
-    status: 'active',
-    startDate: '2026-04-15',
-    endDate: '2026-06-30',
-    progress: 55,
-    sessions: { completed: 14, total: 25 },
-    nextSession: '2026-06-02',
-    adverseEffects: ['Fadiga leve', 'Irritacao cutanea'],
-  },
-  {
-    id: 3,
-    patient: 'Juliana Costa',
-    type: 'Hormonioterapia',
-    protocol: 'Tamoxifeno',
-    status: 'active',
-    startDate: '2026-01-10',
-    endDate: '2031-01-10',
-    progress: 10,
-    sessions: { completed: 4, total: 60 },
-    nextSession: '2026-07-10',
-    adverseEffects: ['Fogachos', 'Alteracoes de humor'],
-  },
-  {
-    id: 4,
-    patient: 'Fernanda Lima',
-    type: 'Braquiterapia',
-    protocol: 'HDR',
-    status: 'scheduled',
-    startDate: '2026-06-10',
-    endDate: '2026-06-24',
-    progress: 0,
-    sessions: { completed: 0, total: 4 },
-    nextSession: '2026-06-10',
-    adverseEffects: [],
-  },
-];
-
-const stats = [
-  { label: 'Total', value: 64 },
-  { label: 'Em andamento', value: 42 },
-  { label: 'Concluidos no mes', value: 8 },
-  { label: 'Agendados', value: 14 },
-];
-
-function formatDate(date: string) {
+function formatDate(date?: string | null) {
+  if (!date) return 'Nao informado';
   return new Date(`${date}T00:00:00`).toLocaleDateString('pt-BR');
 }
 
@@ -84,6 +25,54 @@ function getStatusLabel(status: string) {
 }
 
 export function Tratamentos() {
+  const [apiTreatments, setApiTreatments] = useState<Treatment[]>([]);
+  const [search, setSearch] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadTreatments() {
+      try {
+        setApiTreatments(await listTreatments());
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Erro inesperado.');
+      }
+    }
+
+    loadTreatments();
+  }, []);
+
+  const currentTreatments = apiTreatments;
+  const filteredTreatments = useMemo(() => {
+    const term = search.trim().toLowerCase();
+
+    if (!term) {
+      return currentTreatments;
+    }
+
+    return currentTreatments.filter((treatment) => {
+      return (
+        treatment.patient.toLowerCase().includes(term) ||
+        treatment.protocol.toLowerCase().includes(term) ||
+        treatment.type.toLowerCase().includes(term)
+      );
+    });
+  }, [currentTreatments, search]);
+  const currentStats = [
+    { label: 'Total', value: currentTreatments.length },
+    {
+      label: 'Em andamento',
+      value: currentTreatments.filter((treatment) => treatment.status === 'active').length,
+    },
+    {
+      label: 'Concluidos no mes',
+      value: currentTreatments.filter((treatment) => treatment.status === 'completed').length,
+    },
+    {
+      label: 'Agendados',
+      value: currentTreatments.filter((treatment) => treatment.status === 'scheduled').length,
+    },
+  ];
+
   return (
     <>
       <div className="mb-6">
@@ -91,10 +80,14 @@ export function Tratamentos() {
         <p className="text-slate-600 mt-2">
           Acompanhamento objetivo dos protocolos, sessoes e proximas etapas.
         </p>
+        {apiTreatments.length === 0 && !error && (
+          <p className="mt-2 text-sm text-slate-500">Carregando tratamentos...</p>
+        )}
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {stats.map((stat) => (
+        {currentStats.map((stat) => (
           <Card key={stat.label} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs text-slate-500">{stat.label}</p>
             <p className="mt-1 text-2xl font-bold text-slate-950">{stat.value}</p>
@@ -106,6 +99,8 @@ export function Tratamentos() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
             className="rounded-lg border-slate-200 pl-9"
             placeholder="Buscar por paciente, protocolo ou tipo de tratamento..."
           />
@@ -121,7 +116,10 @@ export function Tratamentos() {
         </div>
 
         <Accordion type="single" collapsible>
-          {treatments.map((treatment) => (
+          {filteredTreatments.length === 0 && (
+            <div className="px-5 py-8 text-sm text-slate-500">Nenhum tratamento encontrado.</div>
+          )}
+          {filteredTreatments.map((treatment) => (
             <AccordionItem key={treatment.id} value={String(treatment.id)} className="border-slate-200 px-5">
               <AccordionTrigger className="hover:no-underline">
                 <div className="grid w-full grid-cols-1 gap-2 pr-4 text-left md:grid-cols-[minmax(0,1.3fr)_12rem_9rem_8rem] md:items-center md:gap-4">

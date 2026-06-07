@@ -21,6 +21,12 @@ postgres://oncocare:oncocare@localhost:5432/oncocare
 Migrations live in `db/migrations` and are applied by the `migrate` service before
 the app starts.
 
+To load the prototype/demo data into the local database:
+
+```sh
+npm run db:seed
+```
+
 ## Local development without Docker
 
 Start a local Postgres instance, apply the migrations, then run:

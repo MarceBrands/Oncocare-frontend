@@ -22,63 +22,8 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { useState } from 'react';
-
-const bioimpedanciaData = {
-  current: {
-    massaMagra: 42.5,
-    gorduraCorporal: 32.8,
-    hidratacao: 51.2,
-    imc: 26.4,
-    pesoTotal: 68.5,
-  },
-};
-
-const evolutionData = [
-  {
-    month: 'Jan',
-    massaMagra: 45.2,
-    gordura: 28.5,
-    hidratacao: 54.2,
-    peso: 70.2,
-  },
-  {
-    month: 'Fev',
-    massaMagra: 44.8,
-    gordura: 29.1,
-    hidratacao: 53.5,
-    peso: 69.8,
-  },
-  {
-    month: 'Mar',
-    massaMagra: 43.5,
-    gordura: 30.8,
-    hidratacao: 52.8,
-    peso: 69.1,
-  },
-  {
-    month: 'Abr',
-    massaMagra: 43.0,
-    gordura: 31.5,
-    hidratacao: 52.0,
-    peso: 68.9,
-  },
-  {
-    month: 'Mai',
-    massaMagra: 42.5,
-    gordura: 32.8,
-    hidratacao: 51.2,
-    peso: 68.5,
-  },
-];
-
-const imcData = [
-  { month: 'Jan', imc: 27.2 },
-  { month: 'Fev', imc: 27.0 },
-  { month: 'Mar', imc: 26.8 },
-  { month: 'Abr', imc: 26.7 },
-  { month: 'Mai', imc: 26.4 },
-];
+import { useEffect, useState } from 'react';
+import { getBioimpedanceOverview, type BioimpedanceOverview } from '../../lib/api';
 
 const getImcCategory = (imc: number) => {
   if (imc < 18.5) return { text: 'Abaixo do peso', color: 'yellow' };
@@ -88,9 +33,31 @@ const getImcCategory = (imc: number) => {
 };
 
 export function Bioimpedancia() {
-  const [selectedPatient, setSelectedPatient] = useState('maria');
+  const [selectedPatient, setSelectedPatient] = useState('');
+  const [overview, setOverview] = useState<BioimpedanceOverview | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const imcCategory = getImcCategory(bioimpedanciaData.current.imc);
+  useEffect(() => {
+    async function loadBioimpedance() {
+      try {
+        const data = await getBioimpedanceOverview(selectedPatient || undefined);
+        setOverview(data);
+
+        if (data.selectedPatientId && !selectedPatient) {
+          setSelectedPatient(data.selectedPatientId);
+        }
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Erro inesperado.');
+      }
+    }
+
+    loadBioimpedance();
+  }, [selectedPatient]);
+
+  const current = overview?.current ?? null;
+  const currentEvolutionData = overview?.evolutionData ?? [];
+  const currentImcData = overview?.imcData ?? [];
+  const imcCategory = current ? getImcCategory(current.imc) : null;
 
   return (
     <>
@@ -101,6 +68,8 @@ export function Bioimpedancia() {
         <p className="text-gray-500 mt-2">
           Monitoramento da composição corporal durante o tratamento
         </p>
+        {!overview && !error && <p className="mt-2 text-sm text-gray-500">Carregando bioimpedância...</p>}
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
 
       {/* Patient Selector */}
@@ -112,9 +81,11 @@ export function Bioimpedancia() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="maria">Maria Santos Silva</SelectItem>
-              <SelectItem value="ana">Ana Paula Oliveira</SelectItem>
-              <SelectItem value="juliana">Juliana Costa</SelectItem>
+              {(overview?.patients ?? []).map((patient) => (
+                <SelectItem key={patient.id} value={patient.id}>
+                  {patient.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -130,7 +101,7 @@ export function Bioimpedancia() {
             <div className="flex-1">
               <p className="text-sm text-gray-500">Massa Magra</p>
               <p className="text-2xl font-bold text-gray-900">
-                {bioimpedanciaData.current.massaMagra}
+                {current?.massaMagra ?? '-'}
                 <span className="text-base font-normal text-gray-500 ml-1">
                   kg
                 </span>
@@ -147,7 +118,7 @@ export function Bioimpedancia() {
             <div className="flex-1">
               <p className="text-sm text-gray-500">Gordura Corporal</p>
               <p className="text-2xl font-bold text-gray-900">
-                {bioimpedanciaData.current.gorduraCorporal}
+                {current?.gorduraCorporal ?? '-'}
                 <span className="text-base font-normal text-gray-500 ml-1">%</span>
               </p>
             </div>
@@ -162,7 +133,7 @@ export function Bioimpedancia() {
             <div className="flex-1">
               <p className="text-sm text-gray-500">Hidratação</p>
               <p className="text-2xl font-bold text-gray-900">
-                {bioimpedanciaData.current.hidratacao}
+                {current?.hidratacao ?? '-'}
                 <span className="text-base font-normal text-gray-500 ml-1">%</span>
               </p>
             </div>
@@ -177,11 +148,13 @@ export function Bioimpedancia() {
             <div className="flex-1">
               <p className="text-sm text-gray-500">IMC</p>
               <p className="text-2xl font-bold text-gray-900">
-                {bioimpedanciaData.current.imc}
+                {current?.imc ?? '-'}
               </p>
-              <p className={`text-xs text-${imcCategory.color}-600 mt-1`}>
-                {imcCategory.text}
-              </p>
+              {imcCategory && (
+                <p className={`text-xs text-${imcCategory.color}-600 mt-1`}>
+                  {imcCategory.text}
+                </p>
+              )}
             </div>
           </div>
         </Card>
@@ -195,7 +168,7 @@ export function Bioimpedancia() {
             Evolução da Composição Corporal
           </h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={evolutionData}>
+            <LineChart data={currentEvolutionData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" stroke="#888" />
               <YAxis stroke="#888" />
@@ -228,8 +201,7 @@ export function Bioimpedancia() {
           </ResponsiveContainer>
           <div className="mt-4 p-3 bg-purple-50 rounded-xl">
             <p className="text-sm text-purple-700">
-              Perda de 2.7 kg de massa magra nos últimos 5 meses. Considerar
-              suplementação nutricional.
+              Série histórica carregada a partir das avaliações registradas.
             </p>
           </div>
         </Card>
@@ -240,7 +212,7 @@ export function Bioimpedancia() {
             Evolução da Hidratação
           </h3>
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={evolutionData}>
+            <AreaChart data={currentEvolutionData}>
               <defs>
                 <linearGradient id="colorHidra" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
@@ -271,7 +243,7 @@ export function Bioimpedancia() {
           </ResponsiveContainer>
           <div className="mt-4 p-3 bg-blue-50 rounded-xl">
             <p className="text-sm text-blue-700">
-              Nível de hidratação em 51.2% está dentro da faixa aceitável (50-60%).
+              Hidratação atual: {current?.hidratacao ?? '-'}%.
             </p>
           </div>
         </Card>
@@ -284,7 +256,7 @@ export function Bioimpedancia() {
             Evolução do IMC
           </h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={imcData}>
+            <BarChart data={currentImcData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" stroke="#888" />
               <YAxis stroke="#888" domain={[20, 30]} />
@@ -306,8 +278,7 @@ export function Bioimpedancia() {
           </ResponsiveContainer>
           <div className="mt-4 p-3 bg-green-50 rounded-xl">
             <p className="text-sm text-green-700">
-              IMC atual de 26.4 está na categoria de sobrepeso. Meta: manter entre
-              18.5 e 24.9.
+              IMC atual: {current?.imc ?? '-'}{imcCategory ? ` (${imcCategory.text})` : ''}.
             </p>
           </div>
         </Card>
@@ -317,7 +288,7 @@ export function Bioimpedancia() {
             Evolução do Peso Total
           </h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={evolutionData}>
+            <LineChart data={currentEvolutionData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" stroke="#888" />
               <YAxis stroke="#888" domain={[65, 75]} />
@@ -341,8 +312,7 @@ export function Bioimpedancia() {
           </ResponsiveContainer>
           <div className="mt-4 p-3 bg-amber-50 rounded-xl">
             <p className="text-sm text-amber-700">
-              Perda de 1.7 kg (2.4%) nos últimos 5 meses. Monitorar para evitar
-              perda excessiva.
+              Peso total atual: {current?.pesoTotal ?? '-'} kg.
             </p>
           </div>
         </Card>

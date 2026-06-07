@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router';
 import {
   Heart,
@@ -34,6 +34,12 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import {
+  createSymptomAssessment,
+  getSymptomsOverview,
+  type SymptomScore,
+  type SymptomsOverview,
+} from '../../lib/api';
 
 interface Symptom {
   id: string;
@@ -44,48 +50,58 @@ interface Symptom {
 }
 
 const symptomsList: Symptom[] = [
-  { id: 'fadiga', name: 'Fadiga', value: 9, icon: Activity, color: '#ec4899' },
-  { id: 'dor', name: 'Dor', value: 8, icon: Heart, color: '#ef4444' },
-  { id: 'nausea', name: 'Náusea', value: 7, icon: Frown, color: '#f59e0b' },
-  { id: 'sono', name: 'Qualidade do Sono', value: 4, icon: Moon, color: '#8b5cf6' },
+  { id: 'fadiga', name: 'Fadiga', value: 0, icon: Activity, color: '#ec4899' },
+  { id: 'dor', name: 'Dor', value: 0, icon: Heart, color: '#ef4444' },
+  { id: 'nausea', name: 'Náusea', value: 0, icon: Frown, color: '#f59e0b' },
+  { id: 'sono', name: 'Qualidade do Sono', value: 0, icon: Moon, color: '#8b5cf6' },
   {
     id: 'ansiedade',
     name: 'Ansiedade',
-    value: 9,
+    value: 0,
     icon: Brain,
     color: '#06b6d4',
   },
   {
     id: 'funcionalidade',
     name: 'Funcionalidade Física',
-    value: 3,
+    value: 0,
     icon: Activity,
     color: '#10b981',
   },
 ];
 
-const radarData = [
-  { subject: 'Fadiga', value: 9, fullMark: 10 },
-  { subject: 'Dor', value: 8, fullMark: 10 },
-  { subject: 'Náusea', value: 7, fullMark: 10 },
-  { subject: 'Sono', value: 4, fullMark: 10 },
-  { subject: 'Ansiedade', value: 9, fullMark: 10 },
-  { subject: 'Física', value: 3, fullMark: 10 },
-];
-
-const evolutionData = [
-  { month: 'Jan', fadiga: 7, dor: 5, nausea: 3, ansiedade: 6, sono: 6 },
-  { month: 'Fev', fadiga: 6, dor: 6, nausea: 4, ansiedade: 7, sono: 5 },
-  { month: 'Mar', fadiga: 8, dor: 7, nausea: 6, ansiedade: 8, sono: 4 },
-  { month: 'Abr', fadiga: 7, dor: 6, nausea: 5, ansiedade: 6, sono: 5 },
-  { month: 'Mai', fadiga: 9, dor: 8, nausea: 7, ansiedade: 9, sono: 4 },
-];
-
-const qualityOfLifeScore = 3.2; // 0-10 scale
-
 export function Sintomas() {
-  const [selectedPatient, setSelectedPatient] = useState('maria');
-  const [symptoms, setSymptoms] = useState(symptomsList);
+  const [selectedPatient, setSelectedPatient] = useState('');
+  const [overview, setOverview] = useState<SymptomsOverview | null>(null);
+  const [symptoms, setSymptoms] = useState<Array<SymptomScore & { icon?: any }>>(symptomsList);
+  const [qualityOfLife, setQualityOfLife] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadSymptoms() {
+      try {
+        const data = await getSymptomsOverview(selectedPatient || undefined);
+        setOverview(data);
+
+        if (data.selectedPatientId && !selectedPatient) {
+          setSelectedPatient(data.selectedPatientId);
+        }
+
+        if (data.assessment) {
+          setSymptoms(data.assessment.symptoms);
+          setQualityOfLife(data.assessment.qualityOfLifeScore);
+        } else {
+          setSymptoms(symptomsList);
+          setQualityOfLife(0);
+        }
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Erro inesperado.');
+      }
+    }
+
+    loadSymptoms();
+  }, [selectedPatient]);
 
   const handleSymptomChange = (id: string, value: number[]) => {
     setSymptoms(
@@ -111,7 +127,35 @@ export function Sintomas() {
     return Frown;
   };
 
-  const QualityIcon = getQualityIcon(qualityOfLifeScore);
+  const handleSave = async () => {
+    if (!overview?.selectedPatientId) {
+      setError('Selecione uma paciente antes de salvar.');
+      return;
+    }
+
+    try {
+      await createSymptomAssessment({
+        patientId: overview.selectedPatientId,
+        assessedAt: new Date().toISOString().slice(0, 10),
+        qualityOfLifeScore: qualityOfLife,
+        symptoms: symptoms.map(({ id, name, value, color }) => ({ id, name, value, color })),
+      });
+      setSavedMessage('Avaliacao salva.');
+      setError(null);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Erro inesperado.');
+    }
+  };
+
+  const QualityIcon = getQualityIcon(qualityOfLife);
+  const iconMap = {
+    fadiga: Activity,
+    dor: Heart,
+    nausea: Frown,
+    sono: Moon,
+    ansiedade: Brain,
+    funcionalidade: Activity,
+  };
 
   return (
     <>
@@ -122,6 +166,9 @@ export function Sintomas() {
         <p className="text-gray-500 mt-2">
           Avaliação baseada em questionários EORTC
         </p>
+        {!overview && !error && <p className="mt-2 text-sm text-gray-500">Carregando sintomas...</p>}
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+        {savedMessage && <p className="mt-2 text-sm text-green-600">{savedMessage}</p>}
       </div>
 
       {/* Patient Selector */}
@@ -133,9 +180,11 @@ export function Sintomas() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="maria">Maria Santos Silva</SelectItem>
-              <SelectItem value="ana">Ana Paula Oliveira</SelectItem>
-              <SelectItem value="juliana">Juliana Costa</SelectItem>
+              {(overview?.patients ?? []).map((patient) => (
+                <SelectItem key={patient.id} value={patient.id}>
+                  {patient.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -150,17 +199,17 @@ export function Sintomas() {
             </p>
             <div className="flex items-baseline gap-2 justify-center md:justify-start">
               <span className="text-6xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                {qualityOfLifeScore.toFixed(1)}
+                {qualityOfLife.toFixed(1)}
               </span>
               <span className="text-2xl text-gray-500">/10</span>
             </div>
             <p className="text-lg font-medium text-gray-700 mt-2">
-              Qualidade de Vida: {getQualityText(qualityOfLifeScore)}
+              Qualidade de Vida: {getQualityText(qualityOfLife)}
             </p>
           </div>
           <div
             className={`size-32 rounded-3xl bg-gradient-to-br ${getQualityColor(
-              qualityOfLifeScore
+              qualityOfLife
             )} flex items-center justify-center shadow-2xl`}
           >
             <QualityIcon className="size-16 text-white" />
@@ -177,7 +226,7 @@ export function Sintomas() {
             </h3>
             <div className="space-y-8">
               {symptoms.map((symptom) => {
-                const Icon = symptom.icon;
+                const Icon = symptom.icon ?? iconMap[symptom.id as keyof typeof iconMap] ?? Activity;
                 return (
                   <div key={symptom.id}>
                     <div className="flex items-center justify-between mb-3">
@@ -223,7 +272,10 @@ export function Sintomas() {
                 );
               })}
             </div>
-            <Button className="w-full mt-8 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg rounded-xl">
+            <Button
+              onClick={handleSave}
+              className="w-full mt-8 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg rounded-xl"
+            >
               Salvar Avaliação
             </Button>
           </Card>
@@ -236,7 +288,13 @@ export function Sintomas() {
               Perfil Multidimensional
             </h3>
             <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={radarData}>
+              <RadarChart
+                data={symptoms.map((symptom) => ({
+                  subject: symptom.name,
+                  value: symptom.value,
+                  fullMark: 10,
+                }))}
+              >
                 <PolarGrid stroke="#e5e7eb" />
                 <PolarAngleAxis
                   dataKey="subject"
@@ -268,7 +326,7 @@ export function Sintomas() {
           Evolução Temporal dos Sintomas
         </h3>
         <ResponsiveContainer width="100%" height={350}>
-          <BarChart data={evolutionData}>
+          <BarChart data={overview?.evolutionData ?? []}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis dataKey="month" stroke="#888" />
             <YAxis stroke="#888" />

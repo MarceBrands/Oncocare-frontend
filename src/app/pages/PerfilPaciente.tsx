@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft,
@@ -30,124 +30,73 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
+import { getPatientProfile, type PatientProfile } from '../../lib/api';
 
-const patientData = {
-  id: 1,
-  name: 'Maria Santos Silva',
-  age: 48,
-  cpf: '123.456.789-00',
-  diagnosis: ['Câncer de Mama'],
-  status: 'critical',
-  riskScore: 8.5,
-  professional: 'Dra. Ana Silva',
-  phone: '(11) 98765-4321',
-  email: 'maria.santos@email.com',
-  address: 'Rua das Flores, 123 - São Paulo, SP',
-};
-
-const symptomsEvolution = [
-  { date: 'Jan', fadiga: 7, dor: 5, nausea: 3, ansiedade: 6 },
-  { date: 'Fev', fadiga: 6, dor: 6, nausea: 4, ansiedade: 7 },
-  { date: 'Mar', fadiga: 8, dor: 7, nausea: 6, ansiedade: 8 },
-  { date: 'Abr', fadiga: 7, dor: 6, nausea: 5, ansiedade: 6 },
-  { date: 'Mai', fadiga: 9, dor: 8, nausea: 7, ansiedade: 9 },
-];
-
-const labEvolution = [
-  { date: 'Jan', hemoglobina: 12.5, leucocitos: 7200, plaquetas: 280 },
-  { date: 'Fev', hemoglobina: 11.8, leucocitos: 6800, plaquetas: 260 },
-  { date: 'Mar', hemoglobina: 10.2, leucocitos: 5500, plaquetas: 220 },
-  { date: 'Abr', hemoglobina: 9.5, leucocitos: 4800, plaquetas: 200 },
-  { date: 'Mai', hemoglobina: 7.2, leucocitos: 4200, plaquetas: 180 },
-];
-
-const timeline = [
-  {
-    id: 1,
-    date: '2026-05-30',
-    type: 'alert',
-    title: 'Hemoglobina Crítica',
-    description: 'Hemoglobina em 7.2 g/dL - Necessário transfusão',
-    icon: AlertTriangle,
-    color: 'red',
-  },
-  {
-    id: 2,
-    date: '2026-05-28',
-    type: 'exam',
-    title: 'Exames Laboratoriais',
-    description: 'Coleta realizada - Aguardando resultados',
-    icon: FileText,
-    color: 'blue',
-  },
-  {
-    id: 3,
-    date: '2026-05-25',
-    type: 'treatment',
-    title: 'Sessão de Quimioterapia',
-    description: '8ª sessão realizada com sucesso',
-    icon: Activity,
-    color: 'purple',
-  },
-  {
-    id: 4,
-    date: '2026-05-20',
-    type: 'consultation',
-    title: 'Consulta Médica',
-    description: 'Avaliação de sintomas e ajuste de medicação',
-    icon: Heart,
-    color: 'pink',
-  },
-];
-
-const treatments = [
-  {
-    id: 1,
-    type: 'Quimioterapia',
-    status: 'Em andamento',
-    startDate: '2026-03-01',
-    endDate: '2026-07-15',
-    progress: 70,
-    sessions: { completed: 8, total: 12 },
-    adverseEffects: ['Fadiga intensa', 'Náusea', 'Queda de cabelo'],
-  },
-  {
-    id: 2,
-    type: 'Radioterapia',
-    status: 'Aguardando',
-    startDate: '2026-07-20',
-    endDate: null,
-    progress: 0,
-    sessions: { completed: 0, total: 25 },
-    adverseEffects: [],
-  },
-];
-
-const alerts = [
-  {
-    id: 1,
-    type: 'critical',
-    message: 'Hemoglobina 7.2 g/dL - Risco de anemia grave',
-    recommendation: 'Considerar transfusão sanguínea urgente',
-  },
-  {
-    id: 2,
-    type: 'warning',
-    message: 'Leucócitos 4200/µL - Abaixo do ideal',
-    recommendation: 'Monitorar risco de infecções',
-  },
-  {
-    id: 3,
-    type: 'warning',
-    message: 'Score de fadiga aumentou 28% no último mês',
-    recommendation: 'Avaliar ajuste no tratamento',
-  },
-];
+function getTreatmentStatusLabel(status: string) {
+  if (status === 'active') return 'Em andamento';
+  if (status === 'scheduled') return 'Agendado';
+  if (status === 'completed') return 'Concluido';
+  return status;
+}
 
 export function PerfilPaciente() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState('visao-geral');
+  const [profile, setProfile] = useState<PatientProfile | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadProfile() {
+      if (!id) return;
+
+      try {
+        setProfile(await getPatientProfile(id));
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Erro inesperado.');
+      }
+    }
+
+    loadProfile();
+  }, [id]);
+
+  if (!profile) {
+    return (
+      <div className="max-w-7xl">
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/pacientes')}
+          className="mb-4 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+        >
+          <ArrowLeft className="size-5 mr-2" />
+          Voltar para Pacientes
+        </Button>
+        <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
+          <p className={error ? 'text-sm text-red-600' : 'text-sm text-gray-500'}>
+            {error ?? 'Carregando perfil da paciente...'}
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  const currentPatient = profile.patient;
+  const currentSymptomsEvolution = profile.symptomsEvolution;
+  const currentLabEvolution = profile.labEvolution;
+  const currentTimeline = profile.timeline;
+  const currentTreatments = profile.treatments;
+  const currentAlerts = profile.alerts;
+  const initials = currentPatient.name
+    .split(' ')
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('');
+  const timelineIconMap = {
+    alert: AlertTriangle,
+    exam: FileText,
+    treatment: Activity,
+    consultation: Heart,
+  };
 
   return (
     <div className="max-w-7xl">
@@ -157,29 +106,37 @@ export function PerfilPaciente() {
           onClick={() => navigate('/pacientes')}
           className="mb-4 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
         >
-          <ArrowLeft className="size-5 mr-2" />
+            <ArrowLeft className="size-5 mr-2" />
           Voltar para Pacientes
         </Button>
+        {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
 
       {/* Patient Header */}
       <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl mb-6">
         <div className="flex flex-col md:flex-row gap-6">
           <div className="size-24 rounded-2xl bg-gradient-to-br from-pink-400 to-purple-600 flex items-center justify-center text-white font-bold text-2xl flex-shrink-0">
-            MS
+            {initials}
           </div>
           <div className="flex-1">
             <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  {patientData.name}
+                  {currentPatient.name}
                 </h1>
                 <p className="text-gray-500">
-                  {patientData.age} anos • CPF: {patientData.cpf}
+                  {currentPatient.age} anos • CPF: {currentPatient.cpf}
                 </p>
               </div>
-              <Badge variant="destructive" className="text-lg px-4 py-2">
-                Crítico
+              <Badge
+                variant={currentPatient.status === 'critical' ? 'destructive' : 'secondary'}
+                className="text-lg px-4 py-2"
+              >
+                {currentPatient.status === 'critical'
+                  ? 'Crítico'
+                  : currentPatient.status === 'attention'
+                  ? 'Atenção'
+                  : 'Estável'}
               </Badge>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -187,14 +144,14 @@ export function PerfilPaciente() {
                 <User className="size-5 text-purple-600" />
                 <div>
                   <p className="text-xs text-gray-500">Profissional</p>
-                  <p className="text-sm font-medium">{patientData.professional}</p>
+                  <p className="text-sm font-medium">{currentPatient.professional}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Heart className="size-5 text-pink-600" />
                 <div>
                   <p className="text-xs text-gray-500">Diagnóstico</p>
-                  <p className="text-sm font-medium">{patientData.diagnosis[0]}</p>
+                  <p className="text-sm font-medium">{currentPatient.diagnosis[0]}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -202,7 +159,7 @@ export function PerfilPaciente() {
                 <div>
                   <p className="text-xs text-gray-500">Score de Risco</p>
                   <p className="text-sm font-bold text-red-600">
-                    {patientData.riskScore}/10
+                    {currentPatient.riskScore}/10
                   </p>
                 </div>
               </div>
@@ -210,7 +167,11 @@ export function PerfilPaciente() {
                 <Calendar className="size-5 text-blue-600" />
                 <div>
                   <p className="text-xs text-gray-500">Próxima consulta</p>
-                  <p className="text-sm font-medium">05/06/2026</p>
+                  <p className="text-sm font-medium">
+                    {currentPatient.nextAppointment
+                      ? new Date(`${currentPatient.nextAppointment}T00:00:00`).toLocaleDateString('pt-BR')
+                      : 'Nao agendada'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -247,7 +208,10 @@ export function PerfilPaciente() {
               Alertas Automáticos
             </h3>
             <div className="space-y-3">
-              {alerts.map((alert) => (
+              {currentAlerts.length === 0 && (
+                <p className="text-sm text-gray-500">Nenhum alerta registrado.</p>
+              )}
+              {currentAlerts.map((alert) => (
                 <div
                   key={alert.id}
                   className={`p-4 rounded-xl border-l-4 ${
@@ -275,7 +239,7 @@ export function PerfilPaciente() {
                 Evolução de Sintomas
               </h3>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={symptomsEvolution}>
+                <LineChart data={currentSymptomsEvolution}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="date" stroke="#888" />
                   <YAxis stroke="#888" />
@@ -319,7 +283,7 @@ export function PerfilPaciente() {
                 Evolução Laboratorial (Hemoglobina)
               </h3>
               <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={labEvolution}>
+                <AreaChart data={currentLabEvolution}>
                   <defs>
                     <linearGradient id="colorHemo" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
@@ -351,7 +315,7 @@ export function PerfilPaciente() {
               <div className="mt-4 p-3 bg-red-50 rounded-xl">
                 <p className="text-sm text-red-700">
                   <TrendingDown className="size-4 inline mr-1" />
-                  Queda de 42% nos últimos 5 meses
+                  Serie historica carregada a partir dos exames registrados.
                 </p>
               </div>
             </Card>
@@ -364,7 +328,13 @@ export function PerfilPaciente() {
               Timeline Clínica
             </h3>
             <div className="space-y-4">
-              {timeline.map((event, idx) => (
+              {currentTimeline.length === 0 && (
+                <p className="text-sm text-gray-500">Nenhum evento registrado.</p>
+              )}
+              {currentTimeline.map((event, idx) => {
+                const EventIcon = timelineIconMap[event.type as keyof typeof timelineIconMap] ?? Heart;
+
+                return (
                 <div key={event.id} className="flex gap-4">
                   <div className="flex flex-col items-center">
                     <div
@@ -378,9 +348,9 @@ export function PerfilPaciente() {
                           : 'from-pink-400 to-pink-600'
                       } flex items-center justify-center`}
                     >
-                      <event.icon className="size-5 text-white" />
+                      <EventIcon className="size-5 text-white" />
                     </div>
-                    {idx < timeline.length - 1 && (
+                    {idx < currentTimeline.length - 1 && (
                       <div className="w-0.5 h-12 bg-gray-200 my-1" />
                     )}
                   </div>
@@ -394,14 +364,20 @@ export function PerfilPaciente() {
                     <p className="text-sm text-gray-600">{event.description}</p>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
         </TabsContent>
 
         {/* Tratamentos */}
         <TabsContent value="tratamentos" className="space-y-6">
-          {treatments.map((treatment) => (
+          {currentTreatments.length === 0 && (
+            <Card className="p-6 bg-white border-0 shadow-lg rounded-2xl">
+              <p className="text-sm text-gray-500">Nenhum tratamento registrado.</p>
+            </Card>
+          )}
+          {currentTreatments.map((treatment) => (
             <Card
               key={treatment.id}
               className="p-6 bg-white border-0 shadow-lg rounded-2xl"
@@ -421,11 +397,11 @@ export function PerfilPaciente() {
                 </div>
                 <Badge
                   variant={
-                    treatment.status === 'Em andamento' ? 'default' : 'secondary'
+                    treatment.status === 'active' ? 'default' : 'secondary'
                   }
                   className="text-sm"
                 >
-                  {treatment.status}
+                  {getTreatmentStatusLabel(treatment.status)}
                 </Badge>
               </div>
 
