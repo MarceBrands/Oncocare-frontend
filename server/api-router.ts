@@ -8,6 +8,12 @@ type RouteParams = {
 
 export function sendJson(res: ServerResponse, statusCode: number, body: unknown) {
   res.statusCode = statusCode;
+
+  if (statusCode === 204) {
+    res.end();
+    return;
+  }
+
   res.setHeader('content-type', 'application/json');
   res.end(JSON.stringify(body));
 }

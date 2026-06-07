@@ -1,4 +1,5 @@
 export type DiagnosisType = 'mama' | 'colo_utero';
+export type PatientStatus = 'stable' | 'attention' | 'critical';
 
 export type PacienteRow = {
   id: string;
@@ -12,7 +13,7 @@ export type PacienteRow = {
   updated_at: string | null;
   tipo_atendimento: string;
   tipo_atendimento_id: number | null;
-  status: 'stable' | 'attention' | 'critical';
+  status: PatientStatus;
   risk_score: number | null;
   phone: string | null;
   email: string | null;
@@ -21,11 +22,22 @@ export type PacienteRow = {
   diagnosticos: DiagnosisType[];
 };
 
-export type CreatePatientInput = {
+export type PatientInput = {
   nome: string;
   cpf: string;
   data_nascimento: string;
   tipo_atendimento: string;
+  diagnosticos?: DiagnosisType[];
+  observacoes?: string | null;
+  status?: PatientStatus;
+  risk_score?: number | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  next_appointment?: string | null;
+};
+
+export type CreatePatientInput = PatientInput & {
   diagnosticos: DiagnosisType[];
   observacoes: string | null;
 };
@@ -48,6 +60,21 @@ export type Treatment = {
   adverseEffects: string[];
 };
 
+export type TreatmentInput = Omit<Treatment, 'id' | 'patient'>;
+
+export type ClinicalAlert = {
+  id: string;
+  patientId: string;
+  patient: string;
+  type: 'critical' | 'warning' | 'info';
+  message: string;
+  recommendation: string | null;
+  time: string | null;
+  occurredAt: string;
+};
+
+export type ClinicalAlertInput = Omit<ClinicalAlert, 'id' | 'patient'>;
+
 export type DashboardData = {
   statsCards: Array<{
     title: string;
@@ -69,16 +96,7 @@ export type DashboardData = {
     lastVisit: string;
     alert: string | null;
   }>;
-  alerts: Array<{
-    id: string;
-    patientId: string;
-    patient: string;
-    type: 'critical' | 'warning' | 'info';
-    message: string;
-    recommendation: string | null;
-    time: string | null;
-    occurredAt: string;
-  }>;
+  alerts: ClinicalAlert[];
 };
 
 export type ExamResult = {
@@ -93,6 +111,8 @@ export type ExamResult = {
   trend?: 'up' | 'down' | 'stable';
   collectedAt: string;
 };
+
+export type ExamInput = Omit<ExamResult, 'id'>;
 
 export type ExamsOverview = {
   patients: Array<{ id: string; name: string }>;
@@ -130,19 +150,27 @@ export type SymptomAssessmentInput = {
   symptoms: SymptomScore[];
 };
 
+export type SymptomAssessment = SymptomAssessmentInput & {
+  id: string;
+};
+
+export type BioimpedanceAssessment = {
+  id: string;
+  patientId: string;
+  assessedAt: string;
+  massaMagra: number;
+  gorduraCorporal: number;
+  hidratacao: number;
+  imc: number;
+  pesoTotal: number;
+};
+
+export type BioimpedanceInput = Omit<BioimpedanceAssessment, 'id'>;
+
 export type BioimpedanceOverview = {
   patients: Array<{ id: string; name: string }>;
   selectedPatientId: string | null;
-  current: {
-    id: string;
-    patientId: string;
-    assessedAt: string;
-    massaMagra: number;
-    gorduraCorporal: number;
-    hidratacao: number;
-    imc: number;
-    pesoTotal: number;
-  } | null;
+  current: BioimpedanceAssessment | null;
   evolutionData: Array<{
     month: string;
     massaMagra: number;
@@ -152,6 +180,18 @@ export type BioimpedanceOverview = {
   }>;
   imcData: Array<{ month: string; imc: number }>;
 };
+
+export type TimelineEvent = {
+  id: string;
+  patientId: string;
+  date: string;
+  type: string;
+  title: string;
+  description: string;
+  color: string;
+};
+
+export type TimelineEventInput = Omit<TimelineEvent, 'id'>;
 
 export type PatientProfile = {
   patient: {
@@ -170,17 +210,9 @@ export type PatientProfile = {
   };
   symptomsEvolution: Array<Record<string, number | string>>;
   labEvolution: Array<Record<string, number | string>>;
-  timeline: Array<{
-    id: string;
-    patientId: string;
-    date: string;
-    type: string;
-    title: string;
-    description: string;
-    color: string;
-  }>;
+  timeline: TimelineEvent[];
   treatments: Treatment[];
-  alerts: DashboardData['alerts'];
+  alerts: ClinicalAlert[];
 };
 
 export type AppSettings = {
@@ -238,10 +270,27 @@ export function listPatients() {
   return request<PacienteRow[]>('/api/pacientes');
 }
 
-export function createPatient(patient: CreatePatientInput) {
+export function getPatient(id: string) {
+  return request<PacienteRow>(`/api/pacientes/${id}`);
+}
+
+export function createPatient(patient: PatientInput) {
   return request<{ id: string }>('/api/pacientes', {
     method: 'POST',
     body: JSON.stringify(patient),
+  });
+}
+
+export function updatePatient(id: string, patient: PatientInput) {
+  return request<PacienteRow>(`/api/pacientes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(patient),
+  });
+}
+
+export function deletePatient(id: string) {
+  return request<null>(`/api/pacientes/${id}`, {
+    method: 'DELETE',
   });
 }
 
@@ -257,8 +306,48 @@ export function listTreatments(patientId?: string | null) {
   return request<Treatment[]>(withPatient('/api/tratamentos', patientId));
 }
 
+export function createTreatment(treatment: TreatmentInput) {
+  return request<{ id: string }>('/api/tratamentos', {
+    method: 'POST',
+    body: JSON.stringify(treatment),
+  });
+}
+
+export function updateTreatment(id: string, treatment: TreatmentInput) {
+  return request<Treatment>(`/api/tratamentos/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(treatment),
+  });
+}
+
+export function deleteTreatment(id: string) {
+  return request<null>(`/api/tratamentos/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 export function getExamsOverview(patientId?: string | null) {
   return request<ExamsOverview>(withPatient('/api/exames', patientId));
+}
+
+export function createExamResult(exam: ExamInput) {
+  return request<{ id: string }>('/api/exames/resultados', {
+    method: 'POST',
+    body: JSON.stringify(exam),
+  });
+}
+
+export function updateExamResult(id: string, exam: ExamInput) {
+  return request<ExamResult>(`/api/exames/resultados/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(exam),
+  });
+}
+
+export function deleteExamResult(id: string) {
+  return request<null>(`/api/exames/resultados/${id}`, {
+    method: 'DELETE',
+  });
 }
 
 export function getSymptomsOverview(patientId?: string | null) {
@@ -272,8 +361,89 @@ export function createSymptomAssessment(assessment: SymptomAssessmentInput) {
   });
 }
 
+export function updateSymptomAssessment(id: string, assessment: SymptomAssessmentInput) {
+  return request<SymptomAssessment>(`/api/sintomas/avaliacoes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(assessment),
+  });
+}
+
+export function deleteSymptomAssessment(id: string) {
+  return request<null>(`/api/sintomas/avaliacoes/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 export function getBioimpedanceOverview(patientId?: string | null) {
   return request<BioimpedanceOverview>(withPatient('/api/bioimpedancia', patientId));
+}
+
+export function createBioimpedanceAssessment(assessment: BioimpedanceInput) {
+  return request<{ id: string }>('/api/bioimpedancia/avaliacoes', {
+    method: 'POST',
+    body: JSON.stringify(assessment),
+  });
+}
+
+export function updateBioimpedanceAssessment(id: string, assessment: BioimpedanceInput) {
+  return request<BioimpedanceAssessment>(`/api/bioimpedancia/avaliacoes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(assessment),
+  });
+}
+
+export function deleteBioimpedanceAssessment(id: string) {
+  return request<null>(`/api/bioimpedancia/avaliacoes/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export function listAlerts(patientId?: string | null) {
+  return request<ClinicalAlert[]>(withPatient('/api/alertas', patientId));
+}
+
+export function createAlert(alert: ClinicalAlertInput) {
+  return request<{ id: string }>('/api/alertas', {
+    method: 'POST',
+    body: JSON.stringify(alert),
+  });
+}
+
+export function updateAlert(id: string, alert: ClinicalAlertInput) {
+  return request<ClinicalAlert>(`/api/alertas/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(alert),
+  });
+}
+
+export function deleteAlert(id: string) {
+  return request<null>(`/api/alertas/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export function listTimeline(patientId?: string | null) {
+  return request<TimelineEvent[]>(withPatient('/api/timeline', patientId));
+}
+
+export function createTimelineEvent(event: TimelineEventInput) {
+  return request<{ id: string }>('/api/timeline', {
+    method: 'POST',
+    body: JSON.stringify(event),
+  });
+}
+
+export function updateTimelineEvent(id: string, event: TimelineEventInput) {
+  return request<TimelineEvent>(`/api/timeline/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(event),
+  });
+}
+
+export function deleteTimelineEvent(id: string) {
+  return request<null>(`/api/timeline/${id}`, {
+    method: 'DELETE',
+  });
 }
 
 export function getSettings() {

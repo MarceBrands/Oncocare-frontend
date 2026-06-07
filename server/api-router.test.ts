@@ -225,12 +225,14 @@ class MemoryRepository implements ApiRepository {
     return this.treatments.length !== before;
   }
 
-  async getExamsOverview(): Promise<ExamsOverview> {
+  async getExamsOverview(patientId?: string | null): Promise<ExamsOverview> {
+    const exams = patientId ? this.exams.filter((exam) => exam.patientId === patientId) : this.exams;
+
     return {
       patients: this.patients.map((patient) => ({ id: patient.id, name: patient.nome })),
-      selectedPatientId: 'patient-1',
+      selectedPatientId: patientId ?? 'patient-1',
       categories: [{ id: 'hemograma', name: 'Hemograma', iconKey: 'activity' }],
-      examsData: { hemograma: this.exams },
+      examsData: { hemograma: exams },
       hemoglobinaHistory: [{ month: 'Mai', value: 7.2, min: 12, max: 16 }],
       lastCollection: '2026-05-28',
     };
@@ -255,11 +257,15 @@ class MemoryRepository implements ApiRepository {
     return this.exams.length !== before;
   }
 
-  async getSymptomsOverview(): Promise<SymptomsOverview> {
+  async getSymptomsOverview(patientId?: string | null): Promise<SymptomsOverview> {
+    const symptoms = patientId
+      ? this.symptoms.filter((assessment) => assessment.patientId === patientId)
+      : this.symptoms;
+
     return {
       patients: this.patients.map((patient) => ({ id: patient.id, name: patient.nome })),
-      selectedPatientId: 'patient-1',
-      assessment: this.symptoms[0],
+      selectedPatientId: patientId ?? 'patient-1',
+      assessment: symptoms[0] ?? null,
       evolutionData: [{ month: 'Mai', fadiga: 9, dor: 8, nausea: 7, ansiedade: 9, sono: 4 }],
     };
   }
@@ -283,11 +289,15 @@ class MemoryRepository implements ApiRepository {
     return this.symptoms.length !== before;
   }
 
-  async getBioimpedanceOverview(): Promise<BioimpedanceOverview> {
+  async getBioimpedanceOverview(patientId?: string | null): Promise<BioimpedanceOverview> {
+    const assessments = patientId
+      ? this.bio.filter((assessment) => assessment.patientId === patientId)
+      : this.bio;
+
     return {
       patients: this.patients.map((patient) => ({ id: patient.id, name: patient.nome })),
-      selectedPatientId: 'patient-1',
-      current: this.bio[0],
+      selectedPatientId: patientId ?? 'patient-1',
+      current: assessments[0] ?? null,
       evolutionData: [{ month: 'Mai', massaMagra: 42.5, gordura: 32.8, hidratacao: 51.2, peso: 68.5 }],
       imcData: [{ month: 'Mai', imc: 26.4 }],
     };
@@ -312,8 +322,8 @@ class MemoryRepository implements ApiRepository {
     return this.bio.length !== before;
   }
 
-  async listAlerts() {
-    return this.alerts;
+  async listAlerts(patientId?: string | null) {
+    return patientId ? this.alerts.filter((alert) => alert.patientId === patientId) : this.alerts;
   }
 
   async createAlert(alert: ClinicalAlertInput) {
@@ -335,8 +345,10 @@ class MemoryRepository implements ApiRepository {
     return this.alerts.length !== before;
   }
 
-  async listTimeline() {
-    return this.timeline;
+  async listTimeline(patientId?: string | null) {
+    return patientId
+      ? this.timeline.filter((event) => event.patientId === patientId)
+      : this.timeline;
   }
 
   async createTimelineEvent(event: TimelineEventInput) {
@@ -404,41 +416,46 @@ class MemoryRepository implements ApiRepository {
   }
 }
 
-const repo = new MemoryRepository();
+function createRequester(repo = new MemoryRepository()) {
+  return async function request(path: string, init?: RequestInit) {
+    const body = init?.body ? String(init.body) : '';
+    const req = Readable.from(body ? [body] : []);
+    Object.assign(req, {
+      method: init?.method ?? 'GET',
+      url: path,
+    });
 
-async function request(path: string, init?: RequestInit) {
-  const body = init?.body ? String(init.body) : '';
-  const req = Readable.from(body ? [body] : []);
-  Object.assign(req, {
-    method: init?.method ?? 'GET',
-    url: path,
-  });
+    return new Promise<{ response: { status: number }; body: any }>((resolve) => {
+      let responseBody = '';
+      const res = {
+        statusCode: 200,
+        setHeader() {},
+        end(chunk?: unknown) {
+          if (typeof chunk === 'string') {
+            responseBody += chunk;
+          }
 
-  return new Promise<{ response: { status: number }; body: any }>((resolve) => {
-    let responseBody = '';
-    const res = {
-      statusCode: 200,
-      setHeader() {},
-      end(chunk?: unknown) {
-        if (typeof chunk === 'string') {
-          responseBody += chunk;
-        }
+          resolve({
+            response: { status: this.statusCode },
+            body: responseBody ? JSON.parse(responseBody) : null,
+          });
+        },
+      };
 
-        resolve({
-          response: { status: this.statusCode },
-          body: responseBody ? JSON.parse(responseBody) : null,
-        });
-      },
-    };
-
-    void handleApiRequest(repo, req as any, res as any);
-  });
+      void handleApiRequest(repo, req as any, res as any);
+    });
+  };
 }
 
 test('patients route supports list, create, update, delete', async () => {
+  const request = createRequester();
   const list = await request('/api/pacientes');
   assert.equal(list.response.status, 200);
   assert.equal(list.body[0].id, 'patient-1');
+
+  const existing = await request('/api/pacientes/patient-1');
+  assert.equal(existing.response.status, 200);
+  assert.equal(existing.body.nome, 'Maria Santos');
 
   const created = await request('/api/pacientes', {
     method: 'POST',
@@ -466,9 +483,11 @@ test('patients route supports list, create, update, delete', async () => {
 
   const deleted = await request(`/api/pacientes/${created.body.id}`, { method: 'DELETE' });
   assert.equal(deleted.response.status, 204);
+  assert.equal(deleted.body, null);
 });
 
 test('dashboard and profile routes return query payloads', async () => {
+  const request = createRequester();
   const dashboard = await request('/api/dashboard');
   assert.equal(dashboard.response.status, 200);
   assert.ok(Array.isArray(dashboard.body.alerts));
@@ -478,7 +497,8 @@ test('dashboard and profile routes return query payloads', async () => {
   assert.equal(profile.body.patient.id, 'patient-1');
 });
 
-test('resource routes expose CRUD endpoints', async () => {
+test('treatment routes support list, create, update, delete', async () => {
+  const request = createRequester();
   const treatment = await request('/api/tratamentos', {
     method: 'POST',
     body: JSON.stringify({
@@ -495,12 +515,36 @@ test('resource routes expose CRUD endpoints', async () => {
     }),
   });
   assert.equal(treatment.response.status, 201);
-  assert.equal((await request('/api/tratamentos')).response.status, 200);
-  assert.equal(
-    (await request(`/api/tratamentos/${treatment.body.id}`, { method: 'DELETE' })).response.status,
-    204
-  );
 
+  const list = await request('/api/tratamentos?patientId=patient-1');
+  assert.equal(list.response.status, 200);
+  assert.ok(list.body.some((item: Treatment) => item.id === treatment.body.id));
+
+  const updated = await request(`/api/tratamentos/${treatment.body.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      patientId: 'patient-1',
+      type: 'Radioterapia',
+      protocol: 'RT-2',
+      status: 'active',
+      startDate: '2026-01-01',
+      endDate: null,
+      progress: 30,
+      sessions: { completed: 3, total: 10 },
+      nextSession: null,
+      adverseEffects: ['Fadiga'],
+    }),
+  });
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.body.protocol, 'RT-2');
+
+  const deleted = await request(`/api/tratamentos/${treatment.body.id}`, { method: 'DELETE' });
+  assert.equal(deleted.response.status, 204);
+  assert.equal(deleted.body, null);
+});
+
+test('exam routes support overview, create, update, delete', async () => {
+  const request = createRequester();
   const exam = await request('/api/exames/resultados', {
     method: 'POST',
     body: JSON.stringify({
@@ -515,12 +559,35 @@ test('resource routes expose CRUD endpoints', async () => {
     }),
   });
   assert.equal(exam.response.status, 201);
-  assert.equal((await request('/api/exames')).response.status, 200);
-  assert.equal(
-    (await request(`/api/exames/resultados/${exam.body.id}`, { method: 'DELETE' })).response.status,
-    204
-  );
 
+  const overview = await request('/api/exames?patientId=patient-1');
+  assert.equal(overview.response.status, 200);
+  assert.ok(overview.body.examsData.hemograma.some((item: ExamResult) => item.id === exam.body.id));
+
+  const updated = await request(`/api/exames/resultados/${exam.body.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      patientId: 'patient-1',
+      categoryId: 'hemograma',
+      name: 'Plaquetas Atualizadas',
+      value: 181,
+      unit: '/uL',
+      reference: '150 - 400',
+      status: 'normal',
+      trend: 'stable',
+      collectedAt: '2026-01-01',
+    }),
+  });
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.body.name, 'Plaquetas Atualizadas');
+
+  const deleted = await request(`/api/exames/resultados/${exam.body.id}`, { method: 'DELETE' });
+  assert.equal(deleted.response.status, 204);
+  assert.equal(deleted.body, null);
+});
+
+test('symptom assessment routes support overview, create, update, delete', async () => {
+  const request = createRequester();
   const symptom = await request('/api/sintomas/avaliacoes', {
     method: 'POST',
     body: JSON.stringify({
@@ -531,13 +598,32 @@ test('resource routes expose CRUD endpoints', async () => {
     }),
   });
   assert.equal(symptom.response.status, 201);
-  assert.equal((await request('/api/sintomas')).response.status, 200);
-  assert.equal(
-    (await request(`/api/sintomas/avaliacoes/${symptom.body.id}`, { method: 'DELETE' })).response
-      .status,
-    204
-  );
 
+  const overview = await request('/api/sintomas?patientId=patient-1');
+  assert.equal(overview.response.status, 200);
+  assert.equal(overview.body.selectedPatientId, 'patient-1');
+
+  const updated = await request(`/api/sintomas/avaliacoes/${symptom.body.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      patientId: 'patient-1',
+      assessedAt: '2026-01-02',
+      qualityOfLifeScore: 7,
+      symptoms: [{ id: 'fadiga', name: 'Fadiga', value: 7, color: '#fff' }],
+    }),
+  });
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.body.qualityOfLifeScore, 7);
+
+  const deleted = await request(`/api/sintomas/avaliacoes/${symptom.body.id}`, {
+    method: 'DELETE',
+  });
+  assert.equal(deleted.response.status, 204);
+  assert.equal(deleted.body, null);
+});
+
+test('bioimpedance routes support overview, create, update, delete', async () => {
+  const request = createRequester();
   const bio = await request('/api/bioimpedancia/avaliacoes', {
     method: 'POST',
     body: JSON.stringify({
@@ -551,15 +637,35 @@ test('resource routes expose CRUD endpoints', async () => {
     }),
   });
   assert.equal(bio.response.status, 201);
-  assert.equal((await request('/api/bioimpedancia')).response.status, 200);
-  assert.equal(
-    (await request(`/api/bioimpedancia/avaliacoes/${bio.body.id}`, { method: 'DELETE' })).response
-      .status,
-    204
-  );
+
+  const overview = await request('/api/bioimpedancia?patientId=patient-1');
+  assert.equal(overview.response.status, 200);
+  assert.equal(overview.body.selectedPatientId, 'patient-1');
+
+  const updated = await request(`/api/bioimpedancia/avaliacoes/${bio.body.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      patientId: 'patient-1',
+      assessedAt: '2026-01-02',
+      massaMagra: 43,
+      gorduraCorporal: 29,
+      hidratacao: 52,
+      imc: 24,
+      pesoTotal: 67,
+    }),
+  });
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.body.imc, 24);
+
+  const deleted = await request(`/api/bioimpedancia/avaliacoes/${bio.body.id}`, {
+    method: 'DELETE',
+  });
+  assert.equal(deleted.response.status, 204);
+  assert.equal(deleted.body, null);
 });
 
-test('alerts, timeline, and settings routes are available', async () => {
+test('alert routes support list, create, update, delete', async () => {
+  const request = createRequester();
   const alert = await request('/api/alertas', {
     method: 'POST',
     body: JSON.stringify({
@@ -572,9 +678,32 @@ test('alerts, timeline, and settings routes are available', async () => {
     }),
   });
   assert.equal(alert.response.status, 201);
-  assert.equal((await request('/api/alertas')).response.status, 200);
-  assert.equal((await request(`/api/alertas/${alert.body.id}`, { method: 'DELETE' })).response.status, 204);
 
+  const list = await request('/api/alertas?patientId=patient-1');
+  assert.equal(list.response.status, 200);
+  assert.ok(list.body.some((item: ClinicalAlert) => item.id === alert.body.id));
+
+  const updated = await request(`/api/alertas/${alert.body.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      patientId: 'patient-1',
+      type: 'warning',
+      message: 'Aviso atualizado',
+      recommendation: null,
+      time: null,
+      occurredAt: '2026-01-01',
+    }),
+  });
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.body.message, 'Aviso atualizado');
+
+  const deleted = await request(`/api/alertas/${alert.body.id}`, { method: 'DELETE' });
+  assert.equal(deleted.response.status, 204);
+  assert.equal(deleted.body, null);
+});
+
+test('timeline routes support list, create, update, delete', async () => {
+  const request = createRequester();
   const event = await request('/api/timeline', {
     method: 'POST',
     body: JSON.stringify({
@@ -587,9 +716,32 @@ test('alerts, timeline, and settings routes are available', async () => {
     }),
   });
   assert.equal(event.response.status, 201);
-  assert.equal((await request('/api/timeline')).response.status, 200);
-  assert.equal((await request(`/api/timeline/${event.body.id}`, { method: 'DELETE' })).response.status, 204);
 
+  const list = await request('/api/timeline?patientId=patient-1');
+  assert.equal(list.response.status, 200);
+  assert.ok(list.body.some((item: TimelineEvent) => item.id === event.body.id));
+
+  const updated = await request(`/api/timeline/${event.body.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      patientId: 'patient-1',
+      date: '2026-01-02',
+      type: 'note',
+      title: 'Nota atualizada',
+      description: 'Descricao',
+      color: 'blue',
+    }),
+  });
+  assert.equal(updated.response.status, 200);
+  assert.equal(updated.body.title, 'Nota atualizada');
+
+  const deleted = await request(`/api/timeline/${event.body.id}`, { method: 'DELETE' });
+  assert.equal(deleted.response.status, 204);
+  assert.equal(deleted.body, null);
+});
+
+test('settings routes support get and update', async () => {
+  const request = createRequester();
   const settings = await request('/api/configuracoes');
   assert.equal(settings.response.status, 200);
   settings.body.usuario.nome = 'Dra. Atualizada';
