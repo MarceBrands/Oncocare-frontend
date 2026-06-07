@@ -11,7 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '../components/ui/accordion';
-import { supabase, type PacienteRow } from '../../lib/supabase';
+import { listPatients, type PacienteRow } from '../../lib/api';
 
 function maskCpf(cpf: string) {
   const onlyNumbers = cpf.replace(/\D/g, '');
@@ -51,16 +51,12 @@ export function Pacientes() {
       setLoading(true);
       setError(null);
 
-      const { data, error: supabaseError } = await supabase
-        .from('pacientes')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (supabaseError) {
-        setError(supabaseError.message);
+      try {
+        const data = await listPatients();
+        setPatients(data);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Erro inesperado.');
         setPatients([]);
-      } else {
-        setPatients((data ?? []) as PacienteRow[]);
       }
 
       setLoading(false);
@@ -125,7 +121,7 @@ export function Pacientes() {
 
       {!loading && error && (
         <Card className="p-6 bg-red-50 border border-red-200 shadow-sm rounded-lg">
-          <p className="font-semibold text-red-900">Nao consegui buscar pacientes no Supabase.</p>
+          <p className="font-semibold text-red-900">Nao consegui buscar pacientes.</p>
           <p className="text-sm text-red-800 mt-2">{error}</p>
         </Card>
       )}

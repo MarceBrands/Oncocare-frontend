@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
-import { supabase } from '../../lib/supabase';
+import { createPatient } from '../../lib/api';
 
 export function NovoPaciente() {
   const navigate = useNavigate();
@@ -38,47 +38,26 @@ export function NovoPaciente() {
     setIsSaving(true);
     setError(null);
 
-    const { data: patient, error: patientError } = await supabase
-      .from('pacientes')
-      .insert({
+    const diagnoses = [
+      formData.cancerMama ? 'mama' : null,
+      formData.cancerColoUtero ? 'colo_utero' : null,
+    ].filter((diagnosis): diagnosis is 'mama' | 'colo_utero' => Boolean(diagnosis));
+
+    try {
+      await createPatient({
         nome: formData.nomeCompleto.trim(),
         cpf: formData.cpf.trim(),
         data_nascimento: formData.dataNascimento,
         tipo_atendimento: formData.tipoAtendimento,
-      })
-      .select('id')
-      .single();
+        diagnosticos: diagnoses,
+        observacoes: formData.observacoes.trim() || null,
+      });
 
-    if (patientError || !patient) {
-      setError(patientError?.message ?? 'Nao foi possivel salvar a paciente.');
+      navigate('/pacientes');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Erro inesperado.');
       setIsSaving(false);
-      return;
     }
-
-    const diagnoses = [
-      formData.cancerMama ? 'mama' : null,
-      formData.cancerColoUtero ? 'colo_utero' : null,
-    ].filter(Boolean);
-
-    if (diagnoses.length > 0) {
-      const { error: diagnosisError } = await supabase.from('paciente_diagnosticos').insert(
-        diagnoses.map((tipoCancer) => ({
-          paciente_id: patient.id,
-          tipo_cancer: tipoCancer,
-          observacoes: formData.observacoes.trim() || null,
-        }))
-      );
-
-      if (diagnosisError) {
-        setError(
-          `Paciente salva, mas o diagnostico nao foi salvo: ${diagnosisError.message}`
-        );
-        setIsSaving(false);
-        return;
-      }
-    }
-
-    navigate('/pacientes');
   };
 
   return (
