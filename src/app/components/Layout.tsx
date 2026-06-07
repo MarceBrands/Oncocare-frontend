@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router';
 import {
   LayoutDashboard,
@@ -9,23 +9,19 @@ import {
   BarChart3,
   Settings,
   Menu,
-  X,
-  Heart,
+  ShieldCheck,
+  HeartPulse,
 } from 'lucide-react';
 import { cn } from './ui/utils';
 
-interface LayoutProps {
-  children: ReactNode;
-}
-
 const navigation = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Painel clinico', href: '/', icon: LayoutDashboard },
   { name: 'Pacientes', href: '/pacientes', icon: Users },
   { name: 'Tratamentos', href: '/tratamentos', icon: Activity },
   { name: 'Exames', href: '/exames', icon: FileText },
-  { name: 'Avaliações', href: '/sintomas', icon: ClipboardList },
-  { name: 'Relatórios', href: '/bioimpedancia', icon: BarChart3 },
-  { name: 'Configurações', href: '#', icon: Settings },
+  { name: 'Avaliacoes', href: '/sintomas', icon: ClipboardList },
+  { name: 'Indicadores', href: '/bioimpedancia', icon: BarChart3 },
+  { name: 'Configuracoes', href: '#', icon: Settings },
 ];
 
 export function Layout() {
@@ -33,11 +29,11 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Mobile sidebar */}
       <div
         className={cn(
-          'fixed inset-0 z-50 bg-black/50 transition-opacity lg:hidden',
+          'fixed inset-0 z-50 bg-slate-950/50 transition-opacity lg:hidden',
           sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         )}
         onClick={() => setSidebarOpen(false)}
@@ -60,20 +56,24 @@ export function Layout() {
 
       {/* Main content */}
       <div className="lg:pl-72">
-        <div className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-purple-100 bg-white/80 backdrop-blur-sm px-4 shadow-sm lg:px-8">
+        <div className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/95 px-4 shadow-sm lg:px-8">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="text-purple-600 lg:hidden"
+            className="text-slate-700 lg:hidden"
+            aria-label="Abrir menu"
           >
             <Menu className="size-6" />
           </button>
-          <div className="flex-1" />
+          <div className="flex flex-1 items-center gap-2 text-sm text-slate-600">
+            <ShieldCheck className="size-4 text-emerald-700" />
+            <span className="hidden sm:inline">Acesso profissional com registro LGPD</span>
+          </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-gray-900">Dra. Ana Silva</p>
-              <p className="text-xs text-gray-500">Oncologista</p>
+              <p className="text-sm font-medium text-slate-900">Dra. Ana Silva</p>
+              <p className="text-xs text-slate-500">Oncologista</p>
             </div>
-            <div className="size-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-semibold">
+            <div className="size-10 rounded-full bg-slate-800 flex items-center justify-center text-white font-semibold">
               AS
             </div>
           </div>
@@ -95,16 +95,14 @@ function SidebarContent({
   onNavigate?: () => void;
 }) {
   return (
-    <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white border-r border-purple-100 px-6 py-8">
+    <div className="flex grow flex-col gap-y-5 overflow-y-auto bg-white border-r border-slate-200 px-6 py-8">
       <div className="flex items-center gap-3">
-        <div className="size-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
-          <Heart className="size-6 text-white" fill="white" />
+        <div className="size-10 rounded-lg bg-teal-700 flex items-center justify-center">
+          <HeartPulse className="size-6 text-white" />
         </div>
         <div>
-          <h1 className="text-lg font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-            OncoSUS
-          </h1>
-          <p className="text-xs text-gray-500">Cuidado Oncológico</p>
+          <h1 className="text-lg font-bold text-slate-950">OncoCare SUS</h1>
+          <p className="text-xs text-slate-500">Plataforma clinica</p>
         </div>
       </div>
 
@@ -117,10 +115,10 @@ function SidebarContent({
               to={item.href}
               onClick={onNavigate}
               className={cn(
-                'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200',
+                'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200',
                 isActive
-                  ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg shadow-purple-500/30'
-                  : 'text-gray-700 hover:bg-purple-50 hover:text-purple-700'
+                  ? 'bg-teal-700 text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
               )}
             >
               <item.icon className="size-5" />
@@ -130,12 +128,14 @@ function SidebarContent({
         })}
       </nav>
 
-      <div className="mt-auto pt-4 border-t border-purple-100">
-        <div className="rounded-xl bg-gradient-to-br from-pink-100 to-purple-100 p-4">
-          <p className="text-xs font-medium text-purple-900">
-            Sistema de Acompanhamento Oncológico
+      <div className="mt-auto pt-4 border-t border-slate-200">
+        <div className="rounded-lg bg-slate-50 p-4 border border-slate-200">
+          <p className="text-xs font-medium text-slate-900">
+            Continuidade do cuidado oncologico
           </p>
-          <p className="text-xs text-purple-700 mt-1">SUS Digital</p>
+          <p className="text-xs text-slate-600 mt-1">
+            APS, especializada e gestao em uma unica plataforma.
+          </p>
         </div>
       </div>
     </div>
