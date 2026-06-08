@@ -61,7 +61,9 @@ class MemoryRepository implements ApiRepository {
       endDate: '2026-07-15',
       progress: 70,
       sessions: { completed: 8, total: 12 },
+      lastSession: '2026-05-29',
       nextSession: '2026-06-05',
+      notes: 'Acompanhamento semanal.',
       adverseEffects: ['Fadiga'],
     },
   ];
@@ -510,7 +512,9 @@ test('treatment routes support list, create, update, delete', async () => {
       endDate: null,
       progress: 10,
       sessions: { completed: 1, total: 10 },
+      lastSession: null,
       nextSession: null,
+      notes: 'Registrar evolucao clinica.',
       adverseEffects: [],
     }),
   });
@@ -518,7 +522,11 @@ test('treatment routes support list, create, update, delete', async () => {
 
   const list = await request('/api/tratamentos?patientId=patient-1');
   assert.equal(list.response.status, 200);
-  assert.ok(list.body.some((item: Treatment) => item.id === treatment.body.id));
+  assert.ok(
+    list.body.some((item: Treatment) => {
+      return item.id === treatment.body.id && item.notes === 'Registrar evolucao clinica.';
+    })
+  );
 
   const updated = await request(`/api/tratamentos/${treatment.body.id}`, {
     method: 'PUT',
@@ -531,12 +539,16 @@ test('treatment routes support list, create, update, delete', async () => {
       endDate: null,
       progress: 30,
       sessions: { completed: 3, total: 10 },
+      lastSession: '2026-02-01',
       nextSession: null,
+      notes: 'Boa tolerancia ao tratamento.',
       adverseEffects: ['Fadiga'],
     }),
   });
   assert.equal(updated.response.status, 200);
   assert.equal(updated.body.protocol, 'RT-2');
+  assert.equal(updated.body.lastSession, '2026-02-01');
+  assert.equal(updated.body.notes, 'Boa tolerancia ao tratamento.');
 
   const deleted = await request(`/api/tratamentos/${treatment.body.id}`, { method: 'DELETE' });
   assert.equal(deleted.response.status, 204);

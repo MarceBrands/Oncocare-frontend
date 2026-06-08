@@ -85,7 +85,9 @@ function createTreatmentPayload() {
     endDate: null,
     progress: 10,
     sessions: { completed: 1, total: 10 },
+    lastSession: null,
     nextSession: null,
+    notes: 'Acompanhamento semanal.',
     adverseEffects: [],
   };
 }

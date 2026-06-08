@@ -52,7 +52,9 @@ export type Treatment = {
     completed: number;
     total: number;
   };
+  lastSession: string | null;
   nextSession: string | null;
+  notes: string | null;
   adverseEffects: string[];
 };
 

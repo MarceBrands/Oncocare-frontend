@@ -4,11 +4,16 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "vite build",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "node scripts/build-server.mjs",
     "db:migrate": "docker compose run --rm migrate",
+    "db:migrate:prod": "node dist-server/migrate.js",
     "db:seed": "docker compose run --rm seed",
     "dev": "vite",
     "dev:docker": "docker compose up --build",
+    "start": "node dist-server/production-server.js",
+    "start:migrate": "npm run db:migrate:prod && npm start",
     "test": "node --experimental-strip-types --test \"server/**/*.test.ts\" \"src/**/*.test.ts\""
   },
   "dependencies": {

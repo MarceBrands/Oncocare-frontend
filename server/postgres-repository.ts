@@ -91,7 +91,9 @@ function mapTreatment(row: Record<string, any>): Treatment {
       completed: row.sessoes_concluidas,
       total: row.sessoes_total,
     },
+    lastSession: asDate(row.ultima_sessao),
     nextSession: asDate(row.proxima_sessao),
+    notes: row.observacoes,
     adverseEffects: row.adverse_effects ?? [],
   };
 }
@@ -362,9 +364,11 @@ export function createPostgresRepository(pool: pg.Pool): ApiRepository {
             progresso,
             sessoes_concluidas,
             sessoes_total,
-            proxima_sessao
+            ultima_sessao,
+            proxima_sessao,
+            observacoes
           )
-          values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           returning id
         `,
         [
@@ -377,7 +381,9 @@ export function createPostgresRepository(pool: pg.Pool): ApiRepository {
           treatment.progress,
           treatment.sessions.completed,
           treatment.sessions.total,
+          treatment.lastSession,
           treatment.nextSession,
+          treatment.notes,
         ]
       );
 
@@ -411,7 +417,9 @@ export function createPostgresRepository(pool: pg.Pool): ApiRepository {
             progresso = $8,
             sessoes_concluidas = $9,
             sessoes_total = $10,
-            proxima_sessao = $11
+            ultima_sessao = $11,
+            proxima_sessao = $12,
+            observacoes = $13
           where id = $1
         `,
         [
@@ -425,7 +433,9 @@ export function createPostgresRepository(pool: pg.Pool): ApiRepository {
           treatment.progress,
           treatment.sessions.completed,
           treatment.sessions.total,
+          treatment.lastSession,
           treatment.nextSession,
+          treatment.notes,
         ]
       );
 
