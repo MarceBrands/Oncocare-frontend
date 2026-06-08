@@ -25,3 +25,19 @@ export type PacienteRow = {
     tipo_cancer: 'mama' | 'colo_utero';
   }>;
 };
+
+export type PacienteTratamentoRow = {
+  id: string;
+  paciente_id: string;
+  tipo_tratamento: string;
+  status: string;
+  data_inicio: string | null;
+  data_fim: string | null;
+  observacoes: string | null;
+  sessoes_previstas: number | null;
+  sessoes_realizadas: number | null;
+  ultima_sessao: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  pacientes?: Pick<PacienteRow, 'id' | 'nome' | 'cpf'> | null;
+};
