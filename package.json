@@ -14,6 +14,7 @@
     "dev:docker": "docker compose up --build",
     "start": "node dist-server/production-server.js",
     "start:migrate": "npm run db:migrate:prod && npm start",
+    "deploy:railway": "sh scripts/deploy-railway.sh",
     "test": "node --experimental-strip-types --test \"server/**/*.test.ts\" \"src/**/*.test.ts\""
   },
   "dependencies": {
