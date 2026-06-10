@@ -6,6 +6,7 @@ import {
   HeartPulse,
   ShieldCheck,
   Stethoscope,
+  UserRound,
   Users,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -14,25 +15,25 @@ const impactItems = [
   {
     icon: Users,
     title: 'Seguimento ativo',
-    text: 'Centraliza pacientes, diagnosticos, tratamentos, exames e avaliacoes em uma rotina unica de cuidado.',
+    text: 'Centraliza pacientes, diagnósticos, tratamentos, exames e avaliações em uma rotina única de cuidado.',
   },
   {
     icon: AlertTriangle,
-    title: 'Alertas clinicos',
+    title: 'Alertas clínicos',
     text: 'Sinaliza piora, sintomas importantes e necessidade de apoio profissional antes que o cuidado se perca.',
   },
   {
     icon: BarChart3,
-    title: 'Gestao do cuidado',
-    text: 'Transforma respostas semanais em indicadores para equipes, unidades publicas, clinicas privadas e atendimentos particulares.',
+    title: 'Gestão do cuidado',
+    text: 'Transforma respostas semanais em indicadores para equipes, unidades públicas, clínicas privadas e atendimentos particulares.',
   },
 ];
 
 const flowItems = [
   'Cadastrar paciente',
-  'Registrar diagnostico',
+  'Registrar diagnóstico',
   'Acompanhar tratamento',
-  'Aplicar avaliacao',
+  'Aplicar avaliação',
   'Priorizar alertas',
 ];
 
@@ -45,18 +46,18 @@ export function Apresentacao() {
             <div className="flex size-10 items-center justify-center rounded-lg bg-cyan-700">
               <HeartPulse className="size-6 text-white" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="font-bold leading-tight">OncoCare</p>
-              <p className="text-xs text-slate-500">Monitoramento oncologico</p>
+              <p className="max-w-56 text-xs leading-4 text-slate-500">Monitoramento multidimensional pós-tratamento oncológico</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/sintomas" className="hidden text-sm font-medium text-slate-600 hover:text-slate-950 sm:inline">
-              Ver avaliacoes
+            <Link to="/paciente" className="hidden text-sm font-medium text-slate-600 hover:text-slate-950 sm:inline">
+              Acesso paciente
             </Link>
             <Link to="/">
               <Button className="bg-cyan-700 hover:bg-cyan-800">
-                Entrar
+                Acesso profissional
                 <ArrowRight className="ml-2 size-4" />
               </Button>
             </Link>
@@ -70,25 +71,30 @@ export function Apresentacao() {
             <div>
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-300/10 px-3 py-1 text-sm text-cyan-100">
                 <ShieldCheck className="size-4" />
-                Plataforma clinica com Postgres local
+                Plataforma de monitoramento multidimensional
               </div>
               <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-normal sm:text-5xl lg:text-6xl">
                 OncoCare
               </h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-300">
-                Acompanhamento digital para pacientes com cancer de mama e cancer de colo do utero, conectando cadastro, tratamentos, exames, avaliacoes semanais e alertas clinicos em uma unica plataforma para SUS, clinicas privadas e atendimentos particulares.
+                Plataforma de monitoramento multidimensional pós-tratamento oncológico, conectando cadastro, tratamentos, exames, avaliações semanais e alertas clínicos em uma única rotina de cuidado.
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-8 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
                 <Link to="/">
-                  <Button size="lg" className="w-full bg-cyan-700 hover:bg-cyan-600 sm:w-auto">
-                    Entrar na plataforma
-                    <ArrowRight className="ml-2 size-5" />
-                  </Button>
+                  <AccessCard
+                    icon={Stethoscope}
+                    title="Sou profissional"
+                    text="Acessar painel clínico, pacientes, tratamentos, exames e indicadores."
+                    tone="cyan"
+                  />
                 </Link>
-                <Link to="/sintomas">
-                  <Button size="lg" variant="outline" className="w-full border-slate-500 bg-transparent text-white hover:bg-white hover:text-slate-950 sm:w-auto">
-                    Ver questionarios
-                  </Button>
+                <Link to="/paciente">
+                  <AccessCard
+                    icon={UserRound}
+                    title="Sou paciente"
+                    text="Entrar no acompanhamento, responder check-in e ver meu plano de cuidado."
+                    tone="rose"
+                  />
                 </Link>
               </div>
             </div>
@@ -101,8 +107,8 @@ export function Apresentacao() {
                       <Stethoscope className="size-5 text-white" />
                     </div>
                     <div>
-                      <p className="font-semibold">Painel clinico</p>
-                      <p className="text-xs text-slate-500">Priorizacao da linha do cuidado</p>
+                      <p className="font-semibold">Painel clínico</p>
+                      <p className="text-xs text-slate-500">Priorização da linha do cuidado</p>
                     </div>
                   </div>
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800">
@@ -110,10 +116,10 @@ export function Apresentacao() {
                   </span>
                 </div>
                 <div className="grid gap-4 p-5 sm:grid-cols-2">
-                  <PreviewMetric label="Pacientes" value="CRUD" tone="teal" />
-                  <PreviewMetric label="Alertas criticos" value="API" tone="red" />
-                  <PreviewMetric label="Tratamentos ativos" value="SQL" tone="blue" />
-                  <PreviewMetric label="Avaliacoes semanais" value="Seed" tone="amber" />
+                  <PreviewMetric label="Pacientes" value="127" tone="teal" />
+                  <PreviewMetric label="Alertas críticos" value="8" tone="red" />
+                  <PreviewMetric label="Tratamentos ativos" value="64" tone="blue" />
+                  <PreviewMetric label="Avaliações semanais" value="42" tone="amber" />
                 </div>
                 <div className="border-t border-slate-200 p-5">
                   <p className="mb-3 text-sm font-semibold">Fluxo assistencial</p>
@@ -146,7 +152,7 @@ export function Apresentacao() {
               Menos perda de seguimento, mais continuidade do cuidado.
             </h2>
             <p className="mt-4 text-slate-600">
-              A proposta e apoiar equipes de saude no acompanhamento longitudinal, com dados simples de registrar e faceis de priorizar.
+              A proposta é apoiar equipes de saúde no acompanhamento longitudinal, com dados simples de registrar e fáceis de priorizar.
             </p>
           </div>
 
@@ -169,26 +175,61 @@ export function Apresentacao() {
         <section className="border-t border-slate-200 bg-slate-50">
           <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 lg:grid-cols-[1fr_auto] lg:items-center lg:px-8">
             <div>
-              <h2 className="text-2xl font-bold text-slate-950">Pronta para demonstracao no hackathon.</h2>
+              <h2 className="text-2xl font-bold text-slate-950">Pronta para demonstração no hackathon.</h2>
               <p className="mt-3 max-w-2xl text-slate-600">
-                A banca pode entender a solucao nesta pagina e depois entrar no aplicativo para testar cadastro, pacientes e avaliacoes.
+                A banca pode entender a solução nesta página e depois testar o acesso profissional ou a experiência da paciente.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link to="/">
                 <Button className="w-full bg-cyan-700 hover:bg-cyan-800 sm:w-auto">
-                  Abrir painel clinico
+                  Acesso profissional
                 </Button>
               </Link>
-              <Link to="/pacientes">
+              <Link to="/paciente">
                 <Button variant="outline" className="w-full sm:w-auto">
-                  Ver pacientes
+                  Acesso paciente
                 </Button>
               </Link>
             </div>
           </div>
         </section>
       </main>
+    </div>
+  );
+}
+
+function AccessCard({
+  icon: Icon,
+  title,
+  text,
+  tone,
+}: {
+  icon: typeof Stethoscope;
+  title: string;
+  text: string;
+  tone: 'cyan' | 'rose';
+}) {
+  const tones = {
+    cyan: 'border-cyan-400/40 bg-cyan-400/10 text-cyan-100 hover:bg-cyan-400/20',
+    rose: 'border-rose-400/40 bg-rose-400/10 text-rose-100 hover:bg-rose-400/20',
+  };
+
+  const iconTones = {
+    cyan: 'bg-cyan-300/15 text-cyan-100',
+    rose: 'bg-rose-300/15 text-rose-100',
+  };
+
+  return (
+    <div className={`h-full rounded-lg border p-5 transition-colors ${tones[tone]}`}>
+      <div className={`mb-4 flex size-11 items-center justify-center rounded-lg ${iconTones[tone]}`}>
+        <Icon className="size-6" />
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-semibold text-white">{title}</h2>
+        <ArrowRight className="size-5 shrink-0" />
+      </div>
+      <p className="mt-2 text-sm leading-6 text-slate-300">{text}</p>
     </div>
   );
 }
