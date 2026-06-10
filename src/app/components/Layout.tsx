@@ -15,13 +15,13 @@ import {
 import { cn } from './ui/utils';
 
 const navigation = [
-  { name: 'Painel clinico', href: '/', icon: LayoutDashboard },
+  { name: 'Painel clínico', href: '/', icon: LayoutDashboard },
   { name: 'Pacientes', href: '/pacientes', icon: Users },
   { name: 'Tratamentos', href: '/tratamentos', icon: Activity },
   { name: 'Exames', href: '/exames', icon: FileText },
-  { name: 'Avaliacoes', href: '/sintomas', icon: ClipboardList },
+  { name: 'Avaliações', href: '/sintomas', icon: ClipboardList },
   { name: 'Indicadores', href: '/bioimpedancia', icon: BarChart3 },
-  { name: 'Configuracoes', href: '/configuracoes', icon: Settings },
+  { name: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
 
 export function Layout() {
@@ -69,6 +69,9 @@ export function Layout() {
             <span className="hidden sm:inline">Acesso profissional com registro LGPD</span>
           </div>
           <div className="flex items-center gap-4">
+            <Link to="/apresentacao" className="hidden text-sm font-medium text-slate-600 hover:text-slate-950 sm:inline">
+              Trocar acesso
+            </Link>
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-slate-900">Dra. Ana Silva</p>
               <p className="text-xs text-slate-500">Oncologista</p>
@@ -100,9 +103,9 @@ function SidebarContent({
         <div className="size-10 rounded-lg bg-cyan-700 flex items-center justify-center">
           <HeartPulse className="size-6 text-white" />
         </div>
-        <div>
+        <div className="min-w-0">
           <h1 className="text-lg font-bold text-slate-950">OncoCare</h1>
-          <p className="text-xs text-slate-500">Plataforma clinica</p>
+          <p className="max-w-44 text-xs leading-4 text-slate-500">Monitoramento multidimensional pós-tratamento oncológico</p>
         </div>
       </div>
 
@@ -131,10 +134,10 @@ function SidebarContent({
       <div className="mt-auto pt-4 border-t border-slate-200">
         <div className="rounded-lg bg-slate-50 p-4 border border-slate-200">
           <p className="text-xs font-medium text-slate-900">
-            Continuidade do cuidado oncologico
+            Continuidade do cuidado oncológico
           </p>
           <p className="text-xs text-slate-600 mt-1">
-            SUS, clinicas privadas e cuidado particular em uma unica plataforma.
+            SUS, clínicas privadas e cuidado particular em uma única plataforma.
           </p>
         </div>
       </div>
